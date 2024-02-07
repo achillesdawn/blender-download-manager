@@ -56,8 +56,8 @@ fn main() {
                 }
                 Media::Video(link) => {
                     if video_count > 3 {
-                        println!("{}", "Video count greater than 3".red());
-                        break;
+                        println!("{} {video_count}", "Video count greater than 3: ".red());
+                        continue;
                     }
                     media_path = media_path.with_extension("mp4");
                     let mut file = fs::File::create(&media_path).unwrap();
