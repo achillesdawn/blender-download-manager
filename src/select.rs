@@ -72,24 +72,28 @@ pub fn select(body: String) -> Result<Vec<Album>, Box<dyn Error>> {
     Ok(result)
 }
 
-pub fn get_album(body: String) {
+pub fn get_album_media(body: String) -> Result<Vec<Media>, Box<dyn Error>> {
     let document = Html::parse_document(&body);
 
     let selector = Selector::parse(".media-group").unwrap();
     let video_selector = Selector::parse("source").unwrap();
     let photo_selector = Selector::parse("img").unwrap();
 
+    let mut results: Vec<Media> = Vec::with_capacity(100);
+
     for el in document.select(&selector) {
         if let Some(video) = el.select(&video_selector).next() {
             let video = Media::Video(video.attr("src").unwrap().to_owned());
 
-            dbg!(video);
+            results.push(video);
         } else {
             if let Some(photo) = el.select(&photo_selector).next() {
                 let photo = Media::Photo(photo.attr("data-src").unwrap().to_owned());
 
-                dbg!(photo);
+                results.push(photo);
             }
         }
     }
+
+    Ok(results)
 }

@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fs::File;
+use std::fs::{remove_file, File};
 use std::io::Write;
 use std::time::Instant;
 
@@ -95,54 +95,59 @@ pub fn get_album(album: &Album) -> Result<String, Box<dyn Error>> {
     Ok(body)
 }
 
-pub fn download(media: Media, file: &mut File) {
+pub fn download(link: &str, file: &mut File) -> Result<(), String> {
 
-    match media {
-        Media::Photo(link) => {
-            let getter = Getter::new(&link);
 
-            let r = getter.request.call().expect("Could not GET url");
+    let getter = Getter::new(link);
 
-            assert!(r.has("Content-Length"));
+    let r = getter.request.call().expect("Could not GET url");
 
-            let len: usize = r.header("Content-Length").unwrap().parse().unwrap();
+    assert!(r.has("Content-Length"));
 
-            dbg!("content length", len);
+    let len: usize = r.header("Content-Length").unwrap().parse().unwrap();
+    let len_mb = len as f32/1000000.0;
+    println!("Content Size {len_mb:.1}mb");
 
-            let mut reader = r.into_reader();
+    if len_mb > 50.0 {
+        println!("Content too big {:.1}mb, skipping...", len);
+        return Err("TOO_BIG".into());
+    }
 
-            let mut buffer = [0u8; 100000];
+    let mut reader = r.into_reader();
 
-            let mut total_read = 0usize;
+    let mut buffer = [0u8; 100000];
 
-            let mut now = Instant::now();
-            let mut elapsed;
+    let mut total_read = 0usize;
+    let mut last_read = 0usize;
 
-            while let Ok(n) = reader.read(&mut buffer) {
-                if n == 0 {
-                    if total_read == len {
-                        println!("Download Finished. Downloaded {total_read}");
-                    } else {
-                        println!("Breaking before finishing: {total_read}/{len}");
-                    }
-                    break;
-                }
-        
-                file.write(&buffer[..n]).unwrap();
-                total_read += n;
-        
-                elapsed = now.elapsed();
-        
-                if elapsed.as_millis() >= 2500 {
-                    dbg!(total_read);
-                    now = Instant::now();
-                }
+    let mut now = Instant::now();
+    let mut elapsed;
+
+    while let Ok(n) = reader.read(&mut buffer) {
+        if n == 0 {
+            if total_read == len {
+                println!("Download Finished. Downloaded {len_mb:.1}mb");
+            } else {
+                println!("Breaking before finishing: {total_read}/{len}");
             }
-        },
-        Media::Video(link) => {
-            println!("Video Not implemented");
-        },
-    };
+            break;
+        }
 
-    
+        file.write(&buffer[..n]).unwrap();
+        total_read += n;
+
+        elapsed = now.elapsed();
+
+        if elapsed.as_millis() >= 1000 {
+            let incremental = total_read - last_read;
+            last_read = total_read;
+            let percentage = (total_read as f32/len as f32) * 100.0;
+            let kbs = incremental / 1000;
+            
+            println!("{percentage:>5.1}% | {kbs:>6} kb/s |");
+            now = Instant::now();
+        }
+    }
+
+    Ok(())
 }
