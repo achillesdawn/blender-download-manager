@@ -83,14 +83,17 @@ pub fn get_album_media(body: String) -> Result<Vec<Media>, Box<dyn Error>> {
 
     for el in document.select(&selector) {
         if let Some(video) = el.select(&video_selector).next() {
-            let video = Media::Video(video.attr("src").unwrap().to_owned());
 
+            let video = Media::Video(video.attr("src").unwrap().to_owned());
             results.push(video);
+
         } else {
             if let Some(photo) = el.select(&photo_selector).next() {
-                let photo = Media::Photo(photo.attr("data-src").unwrap().to_owned());
 
-                results.push(photo);
+                if let Some(photo) = photo.attr("data-src") {
+                    let photo = Media::Photo(photo.to_owned());
+                    results.push(photo);
+                }
             }
         }
     }

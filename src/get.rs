@@ -55,10 +55,10 @@ fn get_url(page: u16) -> String {
     return format!("https://www.erome.com/user/saved?page={}", page);
 }
 
-fn get_saved() {
+pub fn get_saved() {
     let mut results: Vec<Album> = Vec::with_capacity(15 * 16);
 
-    for page in 1..=15 {
+    for page in 1..=16 {
         println!("Getting Page {}", page);
 
         let getter = Getter::new(&get_url(page));
@@ -98,41 +98,52 @@ pub fn get_album(album: &Album) -> Result<String> {
     Ok(body)
 }
 
-pub fn download(link: &str, file: &mut File) -> Result<()> {
+pub fn download(link: &str, file: &mut File) -> Result<usize> {
+
+    const SIZE_LIMIT: f32 = 260.0;
+
     let getter = Getter::new(link);
 
-    let r = getter.request.call().expect("Could not GET url");
+    let r = getter.request.call()?;
 
     assert!(r.has("Content-Length"));
 
     let len: usize = r.header("Content-Length").unwrap().parse().unwrap();
     let len_mb = len as f32 / 1000000.0;
+
     println!("{} {len_mb:.1}mb ({len} bytes)", "Content Size".blue());
 
-    if len_mb > 50.0 {
-        println!("{} {:.1}mb, skipping...", "Content >50mb big".red(), len_mb);
+    if len_mb > SIZE_LIMIT {
+        println!("{} {:.1} : {:.1}mb, skipping...", "Content > limit".red(), SIZE_LIMIT, len_mb);
         return Err(anyhow::anyhow!("TOO_BIG"));
     }
 
     let mut reader = r.into_reader();
 
-    let mut buffer = [0u8; 100000];
+    let mut buffer = [0u8; 1_000_000];
 
     let mut total_read = 0usize;
     let mut last_read = 0usize;
+
+    let mut start = Instant::now();
 
     let mut now = Instant::now();
     let mut elapsed;
 
     while let Ok(n) = reader.read(&mut buffer) {
         if n == 0 {
+
+            let total_elapsed = start.elapsed().as_secs();
             if total_read == len {
                 println!(
-                    "{}. Downloaded {len_mb:.1}mb ({total_read} bytes)",
+                    "| {}. Downloaded {len_mb:.1}mb ({total_read} bytes)",
+
                     "Download Finished".green()
                 );
+                std::io::stdout().flush();
             } else {
-                println!("{}: {total_read}/{len}", "Breaking before finishing".red());
+                println!("{}: {total_read}/{len}", "Break before finishing".red());
+                std::io::stdout().flush();
             }
             break;
         }
@@ -147,11 +158,18 @@ pub fn download(link: &str, file: &mut File) -> Result<()> {
             last_read = total_read;
             let percentage = (total_read as f32 / len as f32) * 100.0;
             let kbs = incremental / 1000;
+            let total_elapsed = start.elapsed().as_secs();
 
-            println!("{percentage:>5.1}% | {kbs:>6} kb/s |");
+            print!("\r{percentage:>5.1}% | {kbs:>5} kb/s | {total_elapsed}s ");
+            std::io::stdout().flush();
+
             now = Instant::now();
         }
     }
 
-    Ok(())
+    if total_read != len {
+        return Err(anyhow::anyhow!("Incomplete"));
+    }
+
+    Ok(total_read)
 }
