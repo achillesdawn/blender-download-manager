@@ -33,7 +33,8 @@ impl Getter {
               "upgrade-insecure-requests": "1",
               "cookie": "_ga_MCBBT8QGSN=GS1.1.1706631626.3.0.1706631628.0.0.0; _ga=GA1.2.753018188.1701969904; _ga_L6Q2GW7H9J=GS1.2.1708030780.35.0.1708030780.0.0.0",
               "Referer": "https://www.blender.org/download/",
-              "Referrer-Policy": "no-referrer-when-downgrade"
+              "Referrer-Policy": "no-referrer-when-downgrade",
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
             }
         );
 

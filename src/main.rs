@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 mod getter;
 mod select;
@@ -26,12 +26,27 @@ fn check_downloaded() -> anyhow::Result<Vec<PathBuf>> {
 
     Ok(result)
 }
+
+fn report_available_downloads(links: &HashMap<String, String>) {
+    println!("\nAvailable:\n");
+    for link in links.values() {
+        let version_name = link
+            .split("https://builder.blender.org/download/daily/")
+            .nth(1)
+            .unwrap();
+
+        println!("- {}", version_name);
+    }
+    println!();
+}
 fn main() {
     let downloaded = check_downloaded().unwrap();
 
     let versions = ["4.1.1"];
 
     let links = getter::get_links().unwrap();
+
+    report_available_downloads(&links);
 
     for (key, link) in links.into_iter() {
         if versions.contains(&key.as_str()) {
