@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
@@ -10,7 +9,7 @@ use anyhow::Result;
 
 use colored::Colorize;
 
-use crate::select;
+use crate::select::{self, BlenderVersion};
 
 struct Getter {
     request: Request,
@@ -48,8 +47,8 @@ impl Getter {
     }
 }
 
-pub fn get_links() -> anyhow::Result<HashMap<String, String>> {
-    let getter = Getter::new("https://builder.blender.org/download/daily/");
+pub fn get_links() -> anyhow::Result<Vec<BlenderVersion>> {
+    let getter = Getter::new("https://builder.blender.org/download/daily/archive/");
 
     let r = match getter.request.call() {
         Ok(r) => r,

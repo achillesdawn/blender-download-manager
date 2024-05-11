@@ -1,10 +1,19 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{io::Read, path::PathBuf, str::FromStr};
+
+use select::BlenderVersion;
+use serde::Deserialize;
 
 mod getter;
 mod select;
 
-fn check_downloaded() -> anyhow::Result<Vec<PathBuf>> {
-    let path = PathBuf::from("/home/miguel/blenders");
+#[derive(Deserialize, Default)]
+struct Config {
+    versions: Vec<String>,
+    path: String,
+}
+
+fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
+    let path = PathBuf::from(config.path.clone());
 
     let mut result = Vec::with_capacity(10);
 
@@ -27,51 +36,81 @@ fn check_downloaded() -> anyhow::Result<Vec<PathBuf>> {
     Ok(result)
 }
 
-fn report_available_downloads(links: &HashMap<String, String>) {
+fn report_available_downloads(versions: &Vec<BlenderVersion>) {
     println!("\nAvailable:\n");
-    for link in links.values() {
-        let version_name = link
-            .split("https://builder.blender.org/download/daily/")
-            .nth(1)
-            .unwrap();
-
-        println!("- {}", version_name);
+    for version in versions.iter() {
+        println!(
+            "- {:<10} | {:<10} | {:<15} | {:<15}",
+            version.version, version.release, version.branch, version.os
+        );
     }
     println!();
 }
+
+fn parse_config() -> anyhow::Result<Config> {
+    let path = PathBuf::from_str("config.yml")?;
+    if !path.exists() {
+        println!("config.yml not found");
+        return Ok(Config::default());
+    }
+
+    let mut file = std::fs::File::open(path)?;
+    let mut buf = Vec::with_capacity(100_000);
+    let _ = file.read_to_end(&mut buf).expect("could not read file");
+
+    let contents = String::from_utf8(buf)?;
+
+    let config: Config = serde_yaml::from_str(&contents)?;
+
+    Ok(config)
+}
 fn main() {
-    let downloaded = check_downloaded().unwrap();
 
-    let versions = ["4.1.1"];
+    let config = match parse_config() {
+        Ok(config) => config,
+        Err(err) => {
+            println!("{}", err);
+            Config::default()
+        },
+    };
 
-    let links = getter::get_links().unwrap();
+    let downloaded = check_downloaded(&config).unwrap();
 
-    report_available_downloads(&links);
+    let versions = getter::get_links().unwrap();
 
-    for (key, link) in links.into_iter() {
-        if versions.contains(&key.as_str()) {
-            dbg!(&link);
+    report_available_downloads(&versions);
 
-            let filename = link
-                .split("https://builder.blender.org/download/daily/")
-                .nth(1)
-                .unwrap();
+    for version in versions.into_iter() {
+        if !config.versions.contains(&version.version) {
+            continue;
+        }
+        dbg!(&version.link);
 
-            let mut path = PathBuf::from("/home/miguel/blenders/");
-            path.push(filename);
+        let filename = version
+            .link
+            .split("https://builder.blender.org/download/daily/archive")
+            .nth(1)
+            .unwrap();
 
-            if downloaded.contains(&path.with_extension("").with_extension("")) {
-                println!("{} Already at Latest version", key);
-                continue;
-            }
+        let mut path = PathBuf::from("/home/miguel/blenders/");
+        path.push(filename);
 
-            let mut file = std::fs::File::create(path).unwrap();
+        if downloaded.contains(&path.with_extension("").with_extension("")) {
+            println!("{} Already at Latest version", version.version);
+            continue;
+        }
 
-            let download_result = getter::download(&link, &mut file);
+        if path.exists() {
+            println!("{} Already downloaded", version.version);
+            continue;
+        }
 
-            if download_result.is_err() {
-                println!("Download Error: {}", download_result.err().unwrap());
-            }
+        let mut file = std::fs::File::create(path).unwrap();
+
+        let download_result = getter::download(&version.link, &mut file);
+
+        if download_result.is_err() {
+            println!("Download Error: {}", download_result.err().unwrap());
         }
     }
 }
