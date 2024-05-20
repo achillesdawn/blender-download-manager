@@ -88,11 +88,11 @@ fn main() {
 
         let filename = version
             .link
-            .split("https://builder.blender.org/download/daily/archive")
+            .split("https://builder.blender.org/download/daily/archive/")
             .nth(1)
             .unwrap();
 
-        let mut path = PathBuf::from("/home/miguel/blenders/");
+        let mut path = PathBuf::from_str("/home/miguel/blenders/").unwrap();
         path.push(filename);
 
         if downloaded.contains(&path.with_extension("").with_extension("")) {
