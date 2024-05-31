@@ -6,10 +6,13 @@ use serde::Deserialize;
 mod getter;
 mod select;
 
-#[derive(Deserialize, Default)]
+#[derive(Debug, Deserialize, Default)]
 struct Config {
     versions: Vec<String>,
     path: String,
+    archive: Option<bool>,
+    #[serde(default)]
+    link: String,
 }
 
 fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
@@ -60,7 +63,14 @@ fn parse_config() -> anyhow::Result<Config> {
 
     let contents = String::from_utf8(buf)?;
 
-    let config: Config = serde_yaml::from_str(&contents)?;
+    let mut config: Config = serde_yaml::from_str(&contents)?;
+
+    config.link = "https://builder.blender.org/download/daily/".to_owned();
+
+    config.archive.inspect(|archive| {
+        if *archive {
+            config.link = "https://builder.blender.org/download/daily/archive/".to_owned();
+    }});
 
     Ok(config)
 }
@@ -76,7 +86,7 @@ fn main() {
 
     let downloaded = check_downloaded(&config).unwrap();
 
-    let versions = getter::get_links().unwrap();
+    let versions = getter::get_links(&config).unwrap();
 
     report_available_downloads(&versions);
 
@@ -88,11 +98,11 @@ fn main() {
 
         let filename = version
             .link
-            .split("https://builder.blender.org/download/daily/archive/")
+            .split(&config.link)
             .nth(1)
             .unwrap();
 
-        let mut path = PathBuf::from_str("/home/miguel/blenders/").unwrap();
+        let mut path = PathBuf::from_str(&config.path).unwrap();
         path.push(filename);
 
         if downloaded.contains(&path.with_extension("").with_extension("")) {

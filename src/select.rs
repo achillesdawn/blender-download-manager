@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File};
+use std::collections::HashMap;
 
 use regex::Regex;
 use scraper::{Html, Selector};

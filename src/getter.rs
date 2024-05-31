@@ -9,7 +9,7 @@ use anyhow::Result;
 
 use colored::Colorize;
 
-use crate::select::{self, BlenderVersion};
+use crate::{select::{self, BlenderVersion}, Config};
 
 struct Getter {
     request: Request,
@@ -47,8 +47,10 @@ impl Getter {
     }
 }
 
-pub fn get_links() -> anyhow::Result<Vec<BlenderVersion>> {
-    let getter = Getter::new("https://builder.blender.org/download/daily/archive/");
+pub fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
+
+
+    let getter = Getter::new(&config.link);
 
     let r = match getter.request.call() {
         Ok(r) => r,
