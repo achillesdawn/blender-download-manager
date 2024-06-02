@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 mod getter;
 mod select;
+mod tracker;
 
 #[derive(Debug, Deserialize, Default)]
 struct Config {

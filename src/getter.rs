@@ -9,7 +9,12 @@ use anyhow::Result;
 
 use colored::Colorize;
 
-use crate::{select::{self, BlenderVersion}, Config};
+use crate::{
+    select::{self, BlenderVersion},
+    Config,
+};
+
+use crate::tracker::ProgressTracker;
 
 struct Getter {
     request: Request,
@@ -48,8 +53,6 @@ impl Getter {
 }
 
 pub fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
-
-
     let getter = Getter::new(&config.link);
 
     let r = match getter.request.call() {
@@ -81,52 +84,36 @@ pub fn download(link: &str, file: &mut File) -> Result<usize> {
 
     let mut buffer = [0u8; 1_000_000];
 
-    let mut total_read = 0usize;
-    let mut last_read = 0usize;
-
-    let start = Instant::now();
-
-    let mut now = Instant::now();
-    let mut elapsed;
-    let mut total_elapsed: u64;
+    let mut tracker = ProgressTracker::new(len);
 
     while let Ok(n) = reader.read(&mut buffer) {
         if n == 0 {
-            if total_read == len {
+            if tracker.total_read == len {
                 println!(
-                    "| {}. Downloaded {len_mb:.1}mb ({total_read} bytes)",
-                    "Download Finished".green()
+                    "| {}. Downloaded {len_mb:.1}mb ({} bytes)",
+                    "Download Finished".green(),
+                    tracker.total_read
                 );
                 std::io::stdout().flush().unwrap();
             } else {
-                println!("{}: {total_read}/{len}", "Break before finishing".red());
+                println!(
+                    "{}: {}/{len}",
+                    "Break before finishing".red(),
+                    tracker.total_read
+                );
                 std::io::stdout().flush().unwrap();
             }
             break;
         }
 
         file.write(&buffer[..n]).unwrap();
-        total_read += n;
 
-        elapsed = now.elapsed();
-
-        if elapsed.as_millis() >= 1000 {
-            let incremental = total_read - last_read;
-            last_read = total_read;
-            let percentage = (total_read as f32 / len as f32) * 100.0;
-            let kbs = incremental / 1000;
-            total_elapsed = start.elapsed().as_secs();
-
-            print!("\r{percentage:>5.1}% | {kbs:>5} kb/s | {}s ", total_elapsed);
-            std::io::stdout().flush().unwrap();
-
-            now = Instant::now();
-        }
+        tracker.update(n);
     }
 
-    if total_read != len {
+    if tracker.total_read != len {
         return Err(anyhow::anyhow!("Incomplete"));
     }
 
-    Ok(total_read)
+    Ok(tracker.total_read)
 }
