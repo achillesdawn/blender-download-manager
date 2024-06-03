@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::Write;
-use std::time::Instant;
 
 use serde_json::json;
 use ureq::Request;
