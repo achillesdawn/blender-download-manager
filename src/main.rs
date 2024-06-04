@@ -3,6 +3,8 @@ use std::{io::Read, path::PathBuf, str::FromStr};
 use select::BlenderVersion;
 use serde::Deserialize;
 
+use colored::Colorize;
+
 mod getter;
 mod select;
 mod tracker;
@@ -71,18 +73,18 @@ fn parse_config() -> anyhow::Result<Config> {
     config.archive.inspect(|archive| {
         if *archive {
             config.link = "https://builder.blender.org/download/daily/archive/".to_owned();
-    }});
+        }
+    });
 
     Ok(config)
 }
 fn main() {
-
     let config = match parse_config() {
         Ok(config) => config,
         Err(err) => {
             println!("{}", err);
             Config::default()
-        },
+        }
     };
 
     let downloaded = check_downloaded(&config).unwrap();
@@ -97,11 +99,7 @@ fn main() {
         }
         dbg!(&version.link);
 
-        let filename = version
-            .link
-            .split(&config.link)
-            .nth(1)
-            .unwrap();
+        let filename = version.link.split("daily/").nth(1).unwrap();
 
         let mut path = PathBuf::from_str(&config.path).unwrap();
         path.push(filename);
@@ -116,12 +114,32 @@ fn main() {
             continue;
         }
 
-        let mut file = std::fs::File::create(path).unwrap();
+        let mut file = std::fs::File::create(&path).unwrap();
 
         let download_result = getter::download(&version.link, &mut file);
 
         if download_result.is_err() {
             println!("Download Error: {}", download_result.err().unwrap());
+        } else {
+            drop(file);
+
+            println!("{}", "Extracting...".yellow());
+
+            let mut child = std::process::Command::new("tar")
+                .arg("-xf")
+                .arg(&path)
+                .arg(format!("--directory={}", config.path))
+                .spawn()
+                .unwrap();
+
+            let result = child.wait().unwrap();
+
+            if result.success() {
+                println!("{}", "Cleaning up...".yellow());
+                std::fs::remove_file(&path).unwrap();
+            }
+
+            println!("Downloaded {:?}", path);
         }
     }
 }
