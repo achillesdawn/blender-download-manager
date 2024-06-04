@@ -78,6 +78,27 @@ fn parse_config() -> anyhow::Result<Config> {
 
     Ok(config)
 }
+
+fn extract_and_clean(path: PathBuf, config: &Config) {
+    println!("{}", "Extracting...".yellow());
+
+    let mut child = std::process::Command::new("tar")
+        .arg("-xf")
+        .arg(&path)
+        .arg(format!("--directory={}", config.path))
+        .spawn()
+        .unwrap();
+
+    let result = child.wait().unwrap();
+
+    if result.success() {
+        println!("{}", "Cleaning up...".yellow());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    println!("Downloaded {:?}", path);
+}
+
 fn main() {
     let config = match parse_config() {
         Ok(config) => config,
@@ -123,23 +144,7 @@ fn main() {
         } else {
             drop(file);
 
-            println!("{}", "Extracting...".yellow());
-
-            let mut child = std::process::Command::new("tar")
-                .arg("-xf")
-                .arg(&path)
-                .arg(format!("--directory={}", config.path))
-                .spawn()
-                .unwrap();
-
-            let result = child.wait().unwrap();
-
-            if result.success() {
-                println!("{}", "Cleaning up...".yellow());
-                std::fs::remove_file(&path).unwrap();
-            }
-
-            println!("Downloaded {:?}", path);
+            extract_and_clean(path, &config);
         }
     }
 }
