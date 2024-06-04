@@ -3,6 +3,8 @@ use std::{
     time::Instant,
 };
 
+use colored::{ColoredString, Colorize};
+
 pub struct ProgressTracker {
     content_length: usize,
 
@@ -36,9 +38,9 @@ impl ProgressTracker {
 
         if incremental_time > 1.0 {
             let kbs = self.incremental_read as f32 / incremental_time / 1000.0;
-            
+
             self.display(kbs);
-            
+
             self.timer = Instant::now();
             self.incremental_read = 0;
         }
@@ -52,25 +54,52 @@ impl ProgressTracker {
         estimated
     }
 
-    fn display(&self, mut kbs: f32) {
+    fn kbs_to_human_readable(kbs: f32) -> String {
+        let kbs_string = format!("{:>5.1}", kbs).blue();
         if kbs > 1000.0 {
-            kbs /= 1000.0;
-            print!(
-                "\r{:>5.1}% | {:>5.1} mb/s | {}s | estimated {} min ",
-                self.percentage,
-                kbs,
-                self.start.elapsed().as_secs(),
-                self.estimated()
-            );
+            format!("{} mb/s", kbs_string)
         } else {
-            print!(
-                "\r{:>5.1}% | {:>5.0} kb/s | {}s | estimated {} min ",
-                self.percentage,
-                kbs,
-                self.start.elapsed().as_secs(),
-                self.estimated()
-            );
+            format!("{} kb/s", kbs_string)
         }
+    }
+
+    fn elapsed_to_human_readable(&self) -> String {
+        let secs = self.start.elapsed().as_secs();
+        if secs < 60 {
+            format!("{}s", secs)
+        } else {
+            let min = secs / 60;
+
+            format!("{}min{}s", min, secs.rem_euclid(60))
+        }
+    }
+
+    fn progress_bar(&self) -> ColoredString {
+        let bar = match self.percentage {
+            0.0..=10.0 => "··········",
+            10.0..=20.0 => "⣿·········",
+            20.0..=30.0 => "⣿⣿········",
+            30.0..=40.0 => "⣿⣿⣿·······",
+            40.0..=50.0 => "⣿⣿⣿⣿······",
+            50.0..=60.0 => "⣿⣿⣿⣿⣿·····",
+            60.0..=70.0 => "⣿⣿⣿⣿⣿⣿····",
+            70.0..=80.0 => "⣿⣿⣿⣿⣿⣿⣿···",
+            80.0..=90.0 => "⣿⣿⣿⣿⣿⣿⣿⣿··",
+            90.0..=100.0 => "⣿⣿⣿⣿⣿⣿⣿⣿⣿·",
+            _ => "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿",
+        };
+
+        format!("{:>5.1}%  [{}]", self.percentage, bar.green()).bold()
+    }
+
+    fn display(&self, kbs: f32) {
+        print!(
+            "\r{} | {} | {} | estimated {} min ",
+            self.progress_bar(),
+            ProgressTracker::kbs_to_human_readable(kbs),
+            self.elapsed_to_human_readable(),
+            self.estimated().to_string().green()
+        );
 
         io::stdout().flush().unwrap();
     }
