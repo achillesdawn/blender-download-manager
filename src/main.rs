@@ -54,9 +54,9 @@ fn report_available_downloads(versions: &Vec<BlenderVersion>) {
 }
 
 fn parse_config() -> anyhow::Result<Config> {
-    let path = PathBuf::from_str("config.yml")?;
+    let path = PathBuf::from_str("config.toml")?;
     if !path.exists() {
-        println!("config.yml not found");
+        println!("config.toml not found");
         return Ok(Config::default());
     }
 
@@ -66,7 +66,7 @@ fn parse_config() -> anyhow::Result<Config> {
 
     let contents = String::from_utf8(buf)?;
 
-    let mut config: Config = serde_yaml::from_str(&contents)?;
+    let mut config: Config = toml::from_str(&contents).unwrap();
 
     config.link = "https://builder.blender.org/download/daily/".to_owned();
 
