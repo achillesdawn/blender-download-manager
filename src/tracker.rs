@@ -55,10 +55,11 @@ impl ProgressTracker {
     }
 
     fn kbs_to_human_readable(kbs: f32) -> String {
-        let kbs_string = format!("{:>5.1}", kbs).blue();
         if kbs > 1000.0 {
+            let kbs_string = format!("{:>5.1}", kbs / 1000.0).blue();
             format!("{} mb/s", kbs_string)
         } else {
+            let kbs_string = format!("{:>5.1}", kbs).blue();
             format!("{} kb/s", kbs_string)
         }
     }
@@ -75,21 +76,26 @@ impl ProgressTracker {
     }
 
     fn progress_bar(&self) -> ColoredString {
-        let bar = match self.percentage {
-            0.0..=10.0 => "··········",
-            10.0..=20.0 => "⣿·········",
-            20.0..=30.0 => "⣿⣿········",
-            30.0..=40.0 => "⣿⣿⣿·······",
-            40.0..=50.0 => "⣿⣿⣿⣿······",
-            50.0..=60.0 => "⣿⣿⣿⣿⣿·····",
-            60.0..=70.0 => "⣿⣿⣿⣿⣿⣿····",
-            70.0..=80.0 => "⣿⣿⣿⣿⣿⣿⣿···",
-            80.0..=90.0 => "⣿⣿⣿⣿⣿⣿⣿⣿··",
-            90.0..=100.0 => "⣿⣿⣿⣿⣿⣿⣿⣿⣿·",
-            _ => "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿",
-        };
+        let bar_length = 15.0;
 
-        format!("{:>5.1}%  [{}]", self.percentage, bar.green()).bold()
+        let current_index = ((self.percentage / 100.0) * bar_length).floor() as usize;
+
+        let mut bar = "".to_owned();
+        for idx in 0..bar_length as usize{
+            if idx < current_index {
+                bar.push('⣿');
+            } else {
+                bar.push('·');
+            }
+        }   
+
+        format!(
+            "{:>5.1}%  [{}] {}",
+            self.percentage,
+            bar.green(),
+            current_index
+        )
+        .bold()
     }
 
     fn display(&self, kbs: f32) {
