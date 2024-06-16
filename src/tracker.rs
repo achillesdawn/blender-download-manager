@@ -109,4 +109,9 @@ impl ProgressTracker {
 
         io::stdout().flush().unwrap();
     }
+
+    pub fn flush(&self) {
+        let rate = self.total_read as f32 / self.start.elapsed().as_secs_f32();
+        self.display(rate);
+    }
 }

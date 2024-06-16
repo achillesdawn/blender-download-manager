@@ -87,6 +87,9 @@ pub fn download(link: &str, file: &mut File) -> Result<usize> {
 
     while let Ok(n) = reader.read(&mut buffer) {
         if n == 0 {
+
+            tracker.flush();
+
             if tracker.total_read == len {
                 println!(
                     "| {}. Downloaded {len_mb:.1}mb ({} bytes)",
