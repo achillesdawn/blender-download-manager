@@ -111,7 +111,8 @@ impl ProgressTracker {
     }
 
     pub fn flush(&self) {
-        let rate = self.total_read as f32 / self.start.elapsed().as_secs_f32();
-        self.display(rate);
+        let incremental_time = self.timer.elapsed().as_secs_f32();
+        let kbs = self.incremental_read as f32 / incremental_time / 1000.0;
+        self.display(kbs);
     }
 }
