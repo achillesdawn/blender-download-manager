@@ -46,12 +46,15 @@ impl ProgressTracker {
         }
     }
 
-    fn estimated(&self) -> u64 {
+    fn estimated(&self) -> String {
         let rate = self.total_read as u64 / self.start.elapsed().as_secs();
         let remaining = self.content_length - self.total_read;
-        let estimated = remaining as u64 / rate / 60;
+        let estimated_total = remaining as u64 / rate;
 
-        estimated
+        let min = estimated_total / 60;
+        let secs = estimated_total.rem_euclid(60);
+
+        format!("{}min{}s", min, secs)
     }
 
     fn kbs_to_human_readable(kbs: f32) -> String {
@@ -81,13 +84,13 @@ impl ProgressTracker {
         let current_index = ((self.percentage / 100.0) * bar_length).floor() as usize;
 
         let mut bar = "".to_owned();
-        for idx in 0..bar_length as usize{
+        for idx in 0..bar_length as usize {
             if idx < current_index {
                 bar.push('⣿');
             } else {
                 bar.push('·');
             }
-        }   
+        }
 
         format!(
             "{:>5.1}%  [{}] {}",
@@ -100,11 +103,11 @@ impl ProgressTracker {
 
     fn display(&self, kbs: f32) {
         print!(
-            "\r{} | {} | {} | estimated {} min ",
+            "\r{} | {} | {} | estimated {}",
             self.progress_bar(),
             ProgressTracker::kbs_to_human_readable(kbs),
             self.elapsed_to_human_readable(),
-            self.estimated().to_string().green()
+            self.estimated()
         );
 
         io::stdout().flush().unwrap();
