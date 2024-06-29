@@ -1,4 +1,4 @@
-use std::{io::Read, path::PathBuf, str::FromStr};
+use std::{collections::HashMap, io::Read, path::PathBuf, str::FromStr};
 
 use select::BlenderVersion;
 use serde::Deserialize;
@@ -43,13 +43,71 @@ fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
 }
 
 fn report_available_downloads(versions: &Vec<BlenderVersion>) {
+    let color_map = HashMap::from([
+        ("red", "\x1b[31m"),
+        ("green", "\x1b[32m"),
+        ("yellow", "\x1b[33m"),
+        ("blue", "\x1b[34m"),
+        ("magenta", "\x1b[35m"),
+        ("cyan", "\x1b[36m"),
+    ]);
+
+    let color = |s: &str, color: &str| {
+        let color = color_map[color];
+        return format!("{}{}{}", color, s, "\x1b[0m");
+    };
+
+    fn table_header(is_header: bool) -> String {
+        let mut header = String::new();
+
+        let start;
+        let end;
+        let sep;
+
+        if is_header {
+            start = "╭─";
+            end = "╮";
+            sep = "─┬─";
+        } else {
+            start = "╰─";
+            end = "╯";
+            sep = "─┴─";
+        }
+
+        for (idx, item) in [10, 6, 18, 15].into_iter().enumerate() {
+            if idx == 0 {
+                header += start;
+            }
+            header += &"─".repeat(item);
+            
+            if idx == 3 {
+                header += end
+            } else {
+                header += sep
+            }
+        }
+
+        header
+    }
+
     println!("\nAvailable:\n");
+
+    println!("{}", table_header(true));
     for version in versions.iter() {
+        let release = match version.release.as_str() {
+            "alpha" => color(&version.release, "magenta"),
+            "beta" => color(&version.release, "cyan"),
+            "stable" => color(&version.release, "green"),
+            &_ => "".to_owned(),
+        };
+
         println!(
-            "- {:<10} | {:<10} | {:<15} | {:<15}",
-            version.version, version.release, version.branch, version.os
+            "├ {:<10} │ {:<15} │ {:<18} │ {:<15}│",
+            version.version, release, version.branch, version.os
         );
     }
+
+    println!("{}", table_header(false));
     println!();
 }
 
