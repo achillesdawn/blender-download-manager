@@ -3,3 +3,4 @@
 *.json
 config.yml
 *.bk
+results/**
