@@ -43,6 +43,7 @@ fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
 }
 
 fn report_available_downloads(versions: &Vec<BlenderVersion>) {
+
     let color_map = HashMap::from([
         ("red", "\x1b[31m"),
         ("green", "\x1b[32m"),
@@ -74,7 +75,7 @@ fn report_available_downloads(versions: &Vec<BlenderVersion>) {
             sep = "─┴─";
         }
 
-        for (idx, item) in [10, 6, 18, 15].into_iter().enumerate() {
+        for (idx, item) in [10, 9, 18, 15].into_iter().enumerate() {
             if idx == 0 {
                 header += start;
             }
@@ -98,11 +99,12 @@ fn report_available_downloads(versions: &Vec<BlenderVersion>) {
             "alpha" => color(&version.release, "magenta"),
             "beta" => color(&version.release, "cyan"),
             "stable" => color(&version.release, "green"),
+            "candidate" => color(&version.release, "blue"),
             &_ => "".to_owned(),
         };
 
         println!(
-            "├ {:<10} │ {:<15} │ {:<18} │ {:<15}│",
+            "├ {:<10} │ {:<18} │ {:<18} │ {:<15}│",
             version.version, release, version.branch, version.os
         );
     }
