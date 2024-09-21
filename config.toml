@@ -1,3 +1,3 @@
-versions = ["4.2.0"]
+versions = ["4.2.1", "4.3.0"]
 path = "/home/miguel/blenders"
 archive = false

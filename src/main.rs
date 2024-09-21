@@ -4,10 +4,12 @@ use select::BlenderVersion;
 use serde::Deserialize;
 
 use colored::Colorize;
+use tui::TuiApp;
 
 mod getter;
 mod select;
 mod tracker;
+mod tui;
 
 #[derive(Debug, Deserialize, Default)]
 struct Config {
@@ -43,7 +45,6 @@ fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
 }
 
 fn report_available_downloads(versions: &Vec<BlenderVersion>) {
-
     let color_map = HashMap::from([
         ("red", "\x1b[31m"),
         ("green", "\x1b[32m"),
@@ -80,7 +81,7 @@ fn report_available_downloads(versions: &Vec<BlenderVersion>) {
                 header += start;
             }
             header += &"─".repeat(item);
-            
+
             if idx == 3 {
                 header += end
             } else {
@@ -159,7 +160,7 @@ fn extract_and_clean(path: PathBuf, config: &Config) {
     println!("Downloaded {:?}", path);
 }
 
-fn main() {
+fn download() {
     let config = match parse_config() {
         Ok(config) => config,
         Err(err) => {
@@ -207,4 +208,19 @@ fn main() {
             extract_and_clean(path, &config);
         }
     }
+}
+
+async fn main_async() {
+    let mut app = TuiApp::new();
+    let mut terminal = tui::init().unwrap();
+    app.run(&mut terminal).await.unwrap();
+    tui::restore().unwrap();
+}
+
+fn main() {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(main_async());
 }
