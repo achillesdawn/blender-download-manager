@@ -1,8 +1,8 @@
 use std::fs::File;
 use std::io::Write;
 
+use reqwest::{header::HeaderName, Request, Url};
 use serde_json::json;
-use ureq::Request;
 
 use anyhow::Result;
 
@@ -41,20 +41,24 @@ impl Getter {
             }
         );
 
-        let mut request = ureq::get(url);
+        let mut request = reqwest::Request::new(reqwest::Method::GET, Url::parse(url).unwrap());
+        let request_headers = request.headers_mut();
 
         for (key, value) in headers.as_object().unwrap() {
-            request = request.set(key, value.as_str().unwrap());
+            request_headers.insert::<HeaderName>(
+                key.parse().unwrap(),
+                value.as_str().unwrap().parse().unwrap(),
+            );
         }
 
         Getter { request }
     }
 }
 
-pub fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
+pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
     let getter = Getter::new(&config.link);
 
-    let r = match getter.request.call() {
+    let r = match reqwest::Client::new().execute(getter.request).await {
         Ok(r) => r,
         Err(err) => {
             println!("Error getting Request");
@@ -63,59 +67,66 @@ pub fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
         }
     };
 
-    let body = r.into_string()?;
+    let body = r.text().await.unwrap();
     select::select(body)
 }
 
-pub fn download(link: &str, file: &mut File) -> Result<usize> {
+pub async fn download(link: &str, file: &mut File) -> Result<usize> {
     let getter = Getter::new(link);
 
-    let r = getter.request.call()?;
+    let mut r: reqwest::Response = match reqwest::Client::new().execute(getter.request).await {
+        Ok(r) => r,
+        Err(err) => {
+            println!("Error getting Request");
+            dbg!(err.to_string());
+            return Err(err.into());
+        }
+    };
 
-    assert!(r.has("Content-Length"));
+    let len: usize = r.content_length().unwrap() as usize;
 
-    let len: usize = r.header("Content-Length").unwrap().parse().unwrap();
     let len_mb = len as f32 / 1000000.0;
 
     println!("{} {len_mb:.1}mb ({len} bytes)", "Content Size".blue());
 
-    let mut reader = r.into_reader();
+    // let mut tracker = ProgressTracker::new(len);
 
-    let mut buffer = [0u8; 1_000_000];
-
-    let mut tracker = ProgressTracker::new(len);
-
-    while let Ok(n) = reader.read(&mut buffer) {
-        if n == 0 {
-
-            tracker.flush();
-
-            if tracker.total_read == len {
-                println!(
-                    "| {}. Downloaded {len_mb:.1}mb ({} bytes)",
-                    "Download Finished".green(),
-                    tracker.total_read
-                );
-                std::io::stdout().flush().unwrap();
-            } else {
-                println!(
-                    "{}: {}/{len}",
-                    "Break before finishing".red(),
-                    tracker.total_read
-                );
-                std::io::stdout().flush().unwrap();
-            }
-            break;
-        }
-
-        file.write(&buffer[..n]).unwrap();
-
-        tracker.update(n);
+    while let Some(chunk) = r.chunk().await? {
+        let _ = file.write(&chunk).unwrap();
     }
 
-    if tracker.total_read != len {
-        return Err(anyhow::anyhow!("Incomplete"));
-    }
+    Ok(0)
 
-    Ok(tracker.total_read)
+    // while let Ok(n) = reader.read(&mut buffer) {
+    //     if n == 0 {
+    //         tracker.flush();
+
+    //         if tracker.total_read == len {
+    //             println!(
+    //                 "| {}. Downloaded {len_mb:.1}mb ({} bytes)",
+    //                 "Download Finished".green(),
+    //                 tracker.total_read
+    //             );
+    //             std::io::stdout().flush().unwrap();
+    //         } else {
+    //             println!(
+    //                 "{}: {}/{len}",
+    //                 "Break before finishing".red(),
+    //                 tracker.total_read
+    //             );
+    //             std::io::stdout().flush().unwrap();
+    //         }
+    //         break;
+    //     }
+
+    //     file.write(&buffer[..n]).unwrap();
+
+    //     tracker.update(n);
+    // }
+
+    // if tracker.total_read != len {
+    //     return Err(anyhow::anyhow!("Incomplete"));
+    // }
+
+    // Ok(tracker.total_read)
 }
