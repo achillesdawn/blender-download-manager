@@ -1,17 +1,12 @@
 use std::path::PathBuf;
 
+use downloader::{
+    config::{parse_config, Config},
+    BlenderVersion,
+};
 use regex::Regex;
-use select::BlenderVersion;
 
-use tui::TuiApp;
-
-mod config;
-mod getter;
-mod select;
-mod tracker;
-mod tui;
-
-use config::{parse_config, Config};
+use downloader::tui::TuiApp;
 
 fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
     let path = PathBuf::from(config.path.clone());
@@ -172,9 +167,9 @@ async fn main_async() {
     let downloaded = parse_downloaded(downloaded);
 
     let mut app = TuiApp::new(config, downloaded);
-    let mut terminal = tui::init().unwrap();
+    let mut terminal = downloader::tui::init().unwrap();
     app.run(&mut terminal).await.unwrap();
-    tui::restore().unwrap();
+    downloader::tui::restore().unwrap();
 }
 
 fn main() {

@@ -11,7 +11,6 @@ pub struct Config {
     pub link: String,
 }
 
-
 pub fn parse_config() -> anyhow::Result<Config> {
     let path = PathBuf::from_str("config.toml")?;
     if !path.exists() {

@@ -6,6 +6,7 @@ use std::{
 
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
 
+use crate::BlenderVersion;
 use futures::StreamExt;
 
 use ratatui::{
@@ -20,7 +21,7 @@ use ratatui::{
     },
 };
 
-use crate::{select::BlenderVersion, Config};
+use crate::config::Config;
 
 mod file_list_widget;
 mod help_widget;
@@ -85,8 +86,12 @@ impl TuiApp {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {}
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
-                    KeyCode::Up => {self.file_widget.increment_active_selection();}
-                    KeyCode::Down => {self.file_widget.decrement_active_selection();}
+                    KeyCode::Up => {
+                        self.file_widget.increment_active_selection();
+                    }
+                    KeyCode::Down => {
+                        self.file_widget.decrement_active_selection();
+                    }
                     KeyCode::Left => {}
                     KeyCode::Right => {}
                     KeyCode::Char(' ') => {}

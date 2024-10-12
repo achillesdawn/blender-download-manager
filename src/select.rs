@@ -13,7 +13,6 @@ pub struct BlenderVersion {
 }
 
 fn filter_latest(versions: Vec<BlenderVersion>) -> Vec<BlenderVersion> {
-
     let mut result = HashMap::new();
 
     for version in versions.into_iter().rev() {
@@ -37,7 +36,8 @@ pub fn select(body: String) -> anyhow::Result<Vec<BlenderVersion>> {
     let document = Html::parse_document(&body);
 
     let selector =
-        Selector::parse("[data-platform='linux'] li:not([style='display:none;']) a:first-child").unwrap();
+        Selector::parse("[data-platform='linux'] li:not([style='display:none;']) a:first-child")
+            .unwrap();
 
     let mut links = Vec::with_capacity(600);
 

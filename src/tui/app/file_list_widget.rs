@@ -1,3 +1,4 @@
+use crate::BlenderVersion;
 use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect, Stylize},
@@ -6,8 +7,6 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{block::Title, Block, Padding, Paragraph, Widget},
 };
-
-use crate::select::BlenderVersion;
 
 pub struct FileListWidget {
     files: Vec<BlenderVersion>,

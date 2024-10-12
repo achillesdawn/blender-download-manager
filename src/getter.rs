@@ -7,8 +7,8 @@ use serde_json::json;
 use anyhow::Result;
 
 use crate::{
+    config::Config,
     select::{self, BlenderVersion},
-    Config,
 };
 
 use crate::tracker::ProgressTracker;
