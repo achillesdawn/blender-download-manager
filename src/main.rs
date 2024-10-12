@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
+use regex::Regex;
 use select::BlenderVersion;
 
-use colored::Colorize;
 use tui::TuiApp;
 
 mod config;
@@ -38,7 +38,7 @@ fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
 }
 
 fn extract_and_clean(path: PathBuf, config: &Config) {
-    println!("{}", "Extracting...".yellow());
+    println!("{}", "Extracting...");
 
     let mut child = std::process::Command::new("tar")
         .arg("-xf")
@@ -50,7 +50,7 @@ fn extract_and_clean(path: PathBuf, config: &Config) {
     let result = child.wait().unwrap();
 
     if result.success() {
-        println!("{}", "Cleaning up...".yellow());
+        println!("{}", "Cleaning up...");
         std::fs::remove_file(&path).unwrap();
     }
 
@@ -105,14 +105,71 @@ fn extract_and_clean(path: PathBuf, config: &Config) {
 //     }
 // }
 
+fn parse_downloaded(downloaded: Vec<PathBuf>) -> Vec<BlenderVersion> {
+    let pattern =
+        Regex::new(r#"blender-(?<version>\d.\d.\d+)-(?<release>\w+)\+(?<branch>.+?)-(?<os>.+)-"#)
+            .unwrap();
+
+    let manual_pattern = Regex::new(r#"blender-(?<version>\d.\d.\d+)-(?<os>.+)"#).unwrap();
+
+    let result: Vec<BlenderVersion> = downloaded
+        .into_iter()
+        .map(|path| {
+            let Some(dir_name) = path.components().last() else {
+                return None;
+            };
+
+            let dir_name = dir_name.as_os_str().to_str().unwrap();
+
+            if let Some(captures) = pattern.captures(dir_name) {
+                let version = captures.name("version");
+                let release = captures.name("release");
+                let branch = captures.name("branch");
+                let os = captures.name("os");
+
+                if let (Some(version), Some(release), Some(branch), Some(os)) =
+                    (version, release, branch, os)
+                {
+                    let blender_version = BlenderVersion {
+                        version: version.as_str().to_owned(),
+                        release: release.as_str().to_owned(),
+                        branch: branch.as_str().to_owned(),
+                        os: os.as_str().to_owned(),
+                        link: "".to_owned(),
+                    };
+
+                    return Some(blender_version);
+                }
+            } else if let Some(captures) = manual_pattern.captures(dir_name) {
+                let version = captures.name("version");
+                let os = captures.name("os");
+
+                if let (Some(version), Some(os)) = (version, os) {
+                    let blender_version = BlenderVersion {
+                        version: version.as_str().to_owned(),
+                        os: os.as_str().to_owned(),
+                        release: "stable".to_owned(),
+                        branch: String::new(),
+                        link: String::new(),
+                    };
+
+                    return Some(blender_version);
+                }
+            }
+
+            None
+        })
+        .flatten()
+        .collect();
+
+    result
+}
+
 async fn main_async() {
     let config = parse_config().unwrap();
     let downloaded = check_downloaded(&config).unwrap();
 
-    let downloaded: Vec<String> = downloaded
-        .into_iter()
-        .map(|path| path.as_os_str().to_str().unwrap().to_owned())
-        .collect();
+    let downloaded = parse_downloaded(downloaded);
 
     let mut app = TuiApp::new(config, downloaded);
     let mut terminal = tui::init().unwrap();

@@ -20,7 +20,7 @@ use ratatui::{
     },
 };
 
-use crate::Config;
+use crate::{select::BlenderVersion, Config};
 
 mod file_list_widget;
 mod help_widget;
@@ -41,7 +41,7 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
-    pub fn new(config: Config, downloaded: Vec<String>) -> Self {
+    pub fn new(config: Config, downloaded: Vec<BlenderVersion>) -> Self {
         let file_widget = file_list_widget::FileListWidget::new(downloaded);
         let help_widget = help_widget::HelpWidget::new();
         TuiApp {
@@ -85,6 +85,8 @@ impl TuiApp {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {}
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
+                    KeyCode::Up => {self.file_widget.increment_active_selection();}
+                    KeyCode::Down => {self.file_widget.decrement_active_selection();}
                     KeyCode::Left => {}
                     KeyCode::Right => {}
                     KeyCode::Char(' ') => {}

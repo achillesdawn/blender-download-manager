@@ -3,8 +3,6 @@ use std::{
     time::Instant,
 };
 
-use colored::{ColoredString, Colorize};
-
 pub struct ProgressTracker {
     content_length: usize,
 
@@ -59,10 +57,10 @@ impl ProgressTracker {
 
     fn kbs_to_human_readable(kbs: f32) -> String {
         if kbs > 1000.0 {
-            let kbs_string = format!("{:>5.1}", kbs / 1000.0).blue();
+            let kbs_string = format!("{:>5.1}", kbs / 1000.0);
             format!("{} mb/s", kbs_string)
         } else {
-            let kbs_string = format!("{:>5.1}", kbs).blue();
+            let kbs_string = format!("{:>5.1}", kbs);
             format!("{} kb/s", kbs_string)
         }
     }
@@ -78,7 +76,7 @@ impl ProgressTracker {
         }
     }
 
-    fn progress_bar(&self) -> ColoredString {
+    fn progress_bar(&self) -> String {
         let bar_length = 15.0;
 
         let current_index = ((self.percentage / 100.0) * bar_length).floor() as usize;
@@ -92,13 +90,7 @@ impl ProgressTracker {
             }
         }
 
-        format!(
-            "{:>5.1}%  [{}] {}",
-            self.percentage,
-            bar.green(),
-            current_index
-        )
-        .bold()
+        format!("{:>5.1}%  [{}] {}", self.percentage, bar, current_index)
     }
 
     fn display(&self, kbs: f32) {

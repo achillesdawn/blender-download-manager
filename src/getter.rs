@@ -6,8 +6,6 @@ use serde_json::json;
 
 use anyhow::Result;
 
-use colored::Colorize;
-
 use crate::{
     select::{self, BlenderVersion},
     Config,
@@ -87,7 +85,7 @@ pub async fn download(link: &str, file: &mut File) -> Result<usize> {
 
     let len_mb = len as f32 / 1000000.0;
 
-    println!("{} {len_mb:.1}mb ({len} bytes)", "Content Size".blue());
+    println!("{} {len_mb:.1}mb ({len} bytes)", "Content Size");
 
     // let mut tracker = ProgressTracker::new(len);
 
