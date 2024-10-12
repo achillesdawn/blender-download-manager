@@ -6,12 +6,9 @@ use serde_json::json;
 
 use anyhow::Result;
 
-use crate::{
-    config::Config,
-    select::{self, BlenderVersion},
-};
+use crate::{blender_utils, config::Config, BlenderVersion};
 
-use crate::tracker::ProgressTracker;
+// use crate::tracker::ProgressTracker;
 
 struct Getter {
     request: Request,
@@ -66,7 +63,7 @@ pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
     };
 
     let body = r.text().await.unwrap();
-    select::select(body)
+    blender_utils::select(body)
 }
 
 pub async fn download(link: &str, file: &mut File) -> Result<usize> {
