@@ -2,7 +2,7 @@ use std::{io::Read, path::PathBuf, str::FromStr};
 
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct Config {
     pub versions: Vec<String>,
     pub path: String,

@@ -53,13 +53,7 @@ fn extract_and_clean(path: PathBuf, config: &Config) {
 }
 
 // fn download() {
-//     let config = match parse_config() {
-//         Ok(config) => config,
-//         Err(err) => {
-//             println!("{}", err);
-//             Config::default()
-//         }
-//     };
+
 
 //     let downloaded = check_downloaded(&config).unwrap();
 
