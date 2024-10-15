@@ -1,11 +1,13 @@
 use std::{
     io::{self},
     str::FromStr,
+    sync::Arc,
     time::Duration,
 };
 
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
-use remote::RemoteWidget;
+use remote::{get_links, RemoteWidget};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::BlenderVersion;
 use futures::StreamExt;
@@ -27,10 +29,18 @@ use help::HelpWidget;
 
 use super::utils::Tui;
 
+enum Message {
+    GetLinksResult(Vec<BlenderVersion>),
+    Error(String),
+}
+
 pub struct TuiApp {
     done: bool,
 
     config: Config,
+
+    events_tx: Arc<Sender<Message>>,
+    events: Receiver<Message>,
 
     file_widget: FileListWidget,
     help_widget: HelpWidget,
@@ -41,6 +51,8 @@ pub struct TuiApp {
 
 impl TuiApp {
     pub fn new(config: Config, downloaded: Vec<BlenderVersion>) -> Self {
+        let (tx, rx) = tokio::sync::mpsc::channel::<Message>(1);
+
         let file_widget = file_list::FileListWidget::new(downloaded);
         let help_widget = help::HelpWidget::new();
         let remote_widget = remote::RemoteWidget::new(config.clone());
@@ -49,6 +61,9 @@ impl TuiApp {
             done: false,
             text: String::from_str("loading...").unwrap(),
             config,
+
+            events_tx: Arc::new(tx),
+            events: rx,
 
             file_widget,
             help_widget,
@@ -71,15 +86,26 @@ impl TuiApp {
                 },
                 Some(Ok(event)) = events.next() => {
                     self.handle_events(event).await.unwrap();
+                },
+                Some(message) = self.events.recv() => {
+                    self.handle_messages(message);
                 }
+
             }
         }
 
         Ok(())
     }
 
-    fn render_frame(&self, frame: &mut ratatui::Frame) {
-        frame.render_widget(self, frame.area());
+    fn handle_messages(&mut self, message: Message) {
+        match message {
+            Message::GetLinksResult(links) => {
+                self.remote_widget.set_available(links);
+            }
+            Message::Error(err) => {
+                self.remote_widget.set_message(err);
+            }
+        }
     }
 
     async fn handle_events(&mut self, event: Event) -> io::Result<()> {
@@ -100,7 +126,23 @@ impl TuiApp {
                         self.done = true;
                     }
                     KeyCode::Enter => {
-                        self.remote_widget.get_links().await;
+                        self.remote_widget
+                            .set_message("checking available versions...");
+
+                        let config = self.config.clone();
+                        let tx = self.events_tx.clone();
+
+                        tokio::spawn(async move {
+                            let versions = get_links(config).await;
+                            match versions {
+                                Ok(versions) => {
+                                    tx.send(Message::GetLinksResult(versions)).await.unwrap();
+                                }
+                                Err(err) => {
+                                    tx.send(Message::Error(err.to_string())).await.unwrap();
+                                }
+                            }
+                        });
                     }
                     _ => {}
                 };
@@ -108,6 +150,10 @@ impl TuiApp {
             _ => {}
         }
         Ok(())
+    }
+
+    fn render_frame(&self, frame: &mut ratatui::Frame) {
+        frame.render_widget(self, frame.area());
     }
 }
 

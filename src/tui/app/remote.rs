@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{config::Config, BlenderVersion};
 use ratatui::{
     layout::Alignment,
@@ -16,6 +18,8 @@ pub struct RemoteWidget {
     len: usize,
 
     selected: usize,
+
+    message: String,
 }
 
 impl RemoteWidget {
@@ -23,24 +27,27 @@ impl RemoteWidget {
         RemoteWidget {
             config,
             checked: false,
+            
             len: 0,
             available: Vec::new(),
             selected: 0,
+            message: "press enter to check available versions".into(),
+        }
+    }
+}
+
+pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String>{
+    match crate::getter::get_links(&config).await {
+        Ok(versions) => {
+            Ok(versions)
+        }
+        Err(err) => {
+            Err(err.to_string())
         }
     }
 }
 
 impl RemoteWidget {
-    pub async fn get_links(&mut self) {
-        match crate::getter::get_links(&self.config).await {
-            Ok(versions) => {
-                self.available = versions;
-            }
-            Err(err) => {
-                dbg!(err);
-            }
-        }
-    }
 
     pub fn increment_active_selection(&mut self) {
         self.selected += 1;
@@ -57,6 +64,14 @@ impl RemoteWidget {
             self.selected = self.selected.saturating_sub(1);
         }
     }
+
+    pub fn set_available(&mut self, links: Vec<BlenderVersion>) {
+        self.available = links;
+    }
+
+    pub fn set_message(&mut self, message: impl ToString) {
+        self.message = message.to_string();
+    }
 }
 
 impl Widget for &RemoteWidget {
@@ -70,7 +85,7 @@ impl Widget for &RemoteWidget {
             .cyan();
 
         if self.available.len() == 0 {
-            let text = Text::from("press enter to check available versions");
+            let text = Text::from(self.message.clone());
             let p = Paragraph::new(text)
                 .wrap(ratatui::widgets::Wrap { trim: false })
                 .left_aligned()
