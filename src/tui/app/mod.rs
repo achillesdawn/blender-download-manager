@@ -85,7 +85,7 @@ impl TuiApp {
                     })?;
                 },
                 Some(Ok(event)) = events.next() => {
-                    self.handle_events(event).await.unwrap();
+                    self.handle_events(event).unwrap();
                 },
                 Some(message) = self.events.recv() => {
                     self.handle_messages(message);
@@ -108,7 +108,7 @@ impl TuiApp {
         }
     }
 
-    async fn handle_events(&mut self, event: Event) -> io::Result<()> {
+    fn handle_events(&mut self, event: Event) -> io::Result<()> {
         match event {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {}
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
