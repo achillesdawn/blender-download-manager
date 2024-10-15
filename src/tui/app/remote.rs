@@ -1,17 +1,18 @@
-use std::str::FromStr;
-
 use crate::{config::Config, BlenderVersion};
 use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect, Stylize},
-    style::{Color, Style, Styled},
+    style::{Color, Style},
     symbols::border,
     text::{Line, Span, Text},
     widgets::{block::Title, Block, Padding, Paragraph, Widget},
 };
 
+use super::StateRef;
+
 pub struct RemoteWidget {
-    config: Config,
+    state: StateRef,
+
     checked: bool,
 
     available: Vec<BlenderVersion>,
@@ -23,32 +24,29 @@ pub struct RemoteWidget {
 }
 
 impl RemoteWidget {
-    pub fn new(config: Config) -> Self {
+    pub fn new(state: StateRef) -> Self {
         RemoteWidget {
-            config,
+            state,
+
             checked: false,
-            
+
             len: 0,
             available: Vec::new(),
+
             selected: 0,
             message: "press enter to check available versions".into(),
         }
     }
 }
 
-pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String>{
+pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String> {
     match crate::getter::get_links(&config).await {
-        Ok(versions) => {
-            Ok(versions)
-        }
-        Err(err) => {
-            Err(err.to_string())
-        }
+        Ok(versions) => Ok(versions),
+        Err(err) => Err(err.to_string()),
     }
 }
 
 impl RemoteWidget {
-
     pub fn increment_active_selection(&mut self) {
         self.selected += 1;
 
@@ -66,6 +64,8 @@ impl RemoteWidget {
     }
 
     pub fn set_available(&mut self, links: Vec<BlenderVersion>) {
+        self.len = links.len();
+        self.checked = true;
         self.available = links;
     }
 
@@ -78,11 +78,19 @@ impl Widget for &RemoteWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Title::from("remote").alignment(Alignment::Center);
 
-        let block = Block::bordered()
+        let mut block = Block::bordered()
             .title(title)
             .border_set(border::ROUNDED)
-            .padding(Padding::uniform(1))
-            .cyan();
+            .padding(Padding::uniform(1));
+
+        match self.state.read().unwrap().active_widget {
+            super::ActiveWidget::FileListWidget => {
+                block = block.cyan();
+            }
+            super::ActiveWidget::RemoteWidget => {
+                block = block.magenta();
+            }
+        }
 
         if self.available.len() == 0 {
             let text = Text::from(self.message.clone());

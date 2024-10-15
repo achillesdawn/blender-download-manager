@@ -2,21 +2,27 @@ use crate::BlenderVersion;
 use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect, Stylize},
-    style::{Color, Style, Styled},
+    style::{Color, Style},
     symbols::border,
     text::{Line, Span, Text},
     widgets::{block::Title, Block, Padding, Paragraph, Widget},
 };
 
+use super::StateRef;
+
 pub struct FileListWidget {
+    state: StateRef,
+
     files: Vec<BlenderVersion>,
     selected: usize,
     len: usize,
 }
 
 impl FileListWidget {
-    pub fn new(files: Vec<BlenderVersion>) -> Self {
+    pub fn new(files: Vec<BlenderVersion>, state: StateRef) -> Self {
         FileListWidget {
+            state,
+
             len: files.len(),
             files: files,
             selected: 0,
@@ -46,11 +52,19 @@ impl Widget for &FileListWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Title::from("local").alignment(Alignment::Center);
 
-        let block = Block::bordered()
+        let mut block = Block::bordered()
             .title(title)
             .border_set(border::ROUNDED)
-            .padding(Padding::uniform(1))
-            .cyan();
+            .padding(Padding::uniform(1));
+
+        match self.state.read().unwrap().active_widget {
+            super::ActiveWidget::FileListWidget => {
+                block = block.magenta();
+            }
+            super::ActiveWidget::RemoteWidget => {
+                block = block.cyan();
+            }
+        }
 
         let lines: Vec<Line> = self
             .files

@@ -1,7 +1,8 @@
 use std::{
     io::{self},
+    rc::Rc,
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
@@ -34,8 +35,21 @@ enum Message {
     Error(String),
 }
 
+enum ActiveWidget {
+    FileListWidget,
+    RemoteWidget,
+}
+
+pub struct State {
+    active_widget: ActiveWidget,
+}
+
+type StateRef = Rc<RwLock<State>>;
+
 pub struct TuiApp {
     done: bool,
+
+    state: StateRef,
 
     config: Config,
 
@@ -53,9 +67,13 @@ impl TuiApp {
     pub fn new(config: Config, downloaded: Vec<BlenderVersion>) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel::<Message>(1);
 
-        let file_widget = file_list::FileListWidget::new(downloaded);
+        let state = Rc::new(RwLock::new(State {
+            active_widget: ActiveWidget::FileListWidget,
+        }));
+
         let help_widget = help::HelpWidget::new();
-        let remote_widget = remote::RemoteWidget::new(config.clone());
+        let file_widget = file_list::FileListWidget::new(downloaded, state.clone());
+        let remote_widget = remote::RemoteWidget::new(state.clone());
 
         TuiApp {
             done: false,
@@ -68,6 +86,8 @@ impl TuiApp {
             file_widget,
             help_widget,
             remote_widget,
+
+            state,
         }
     }
 
@@ -90,10 +110,8 @@ impl TuiApp {
                 Some(message) = self.events.recv() => {
                     self.handle_messages(message);
                 }
-
             }
         }
-
         Ok(())
     }
 
@@ -113,14 +131,32 @@ impl TuiApp {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {}
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
-                    KeyCode::Up => {
-                        self.file_widget.increment_active_selection();
+                    KeyCode::Up => match self.state.read().unwrap().active_widget {
+                        ActiveWidget::FileListWidget => {
+                            self.file_widget.decrement_active_selection();
+                        }
+                        ActiveWidget::RemoteWidget => {
+                            self.remote_widget.decrement_active_selection();
+                        }
+                    },
+                    KeyCode::Down => match self.state.read().unwrap().active_widget {
+                        ActiveWidget::FileListWidget => {
+                            self.file_widget.increment_active_selection();
+                        }
+                        ActiveWidget::RemoteWidget => {
+                            self.remote_widget.increment_active_selection();
+                        }
+                    },
+                    KeyCode::Left => {
+                        let mut state = self.state.write().unwrap();
+
+                        state.active_widget = ActiveWidget::FileListWidget;
                     }
-                    KeyCode::Down => {
-                        self.file_widget.decrement_active_selection();
+                    KeyCode::Right => {
+                        let mut state = self.state.write().unwrap();
+
+                        state.active_widget = ActiveWidget::RemoteWidget;
                     }
-                    KeyCode::Left => {}
-                    KeyCode::Right => {}
                     KeyCode::Char(' ') => {}
                     KeyCode::Char('q') => {
                         self.done = true;
