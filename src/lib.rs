@@ -7,7 +7,7 @@ mod getter;
 // mod tracker;
 pub mod tui;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlenderVersion {
     pub version: String,
     pub release: String,

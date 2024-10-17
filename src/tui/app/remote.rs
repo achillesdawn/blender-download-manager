@@ -1,8 +1,8 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{fs::File, path::PathBuf, str::FromStr};
 
 use crate::{config::Config, BlenderVersion};
 use ratatui::{
-    layout::Alignment,
+    layout::{Alignment, Constraint, Direction, Layout},
     prelude::{Buffer, Rect, Stylize},
     style::{Color, Style},
     symbols::border,
@@ -16,6 +16,7 @@ pub struct RemoteWidget {
     state: StateRef,
 
     checked: bool,
+    pub select_mode: bool,
 
     available: Vec<BlenderVersion>,
     len: usize,
@@ -31,6 +32,7 @@ impl RemoteWidget {
             state,
 
             checked: false,
+            select_mode: false,
 
             len: 0,
             available: Vec::new(),
@@ -48,7 +50,7 @@ pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String> {
     }
 }
 
-pub async fn get_version(version: BlenderVersion, config: Config) {
+pub fn get_file(version: &BlenderVersion, config: Config) -> File{
     let filename = version.link.split("daily/").nth(1).unwrap();
 
     let mut path = PathBuf::from_str(&config.path).unwrap();
@@ -62,17 +64,18 @@ pub async fn get_version(version: BlenderVersion, config: Config) {
         println!("{} Already downloaded", version.version);
     }
 
-    let mut file = std::fs::File::create(&path).unwrap();
+    let file = std::fs::File::create(&path).unwrap();
+    file
 
-    let download_result = crate::getter::download(&version.link, &mut file).await;
+    // let download_result = crate::getter::download(&version.link, &mut file).await;
 
-    if download_result.is_err() {
-        println!("Download Error: {}", download_result.err().unwrap());
-    } else {
-        drop(file);
+    // if download_result.is_err() {
+    //     println!("Download Error: {}", download_result.err().unwrap());
+    // } else {
+    //     drop(file);
 
-        crate::extract_and_clean(path, &config);
-    }
+    //     crate::extract_and_clean(path, &config);
+    // }
 }
 
 impl RemoteWidget {
@@ -85,6 +88,10 @@ impl RemoteWidget {
     }
 
     pub fn decrement_active_selection(&mut self) {
+        if self.len == 0 {
+            return;
+        }
+
         if self.selected == 0 {
             self.selected = self.len - 1;
         } else {
@@ -94,21 +101,46 @@ impl RemoteWidget {
 
     pub fn set_available(&mut self, links: Vec<BlenderVersion>) {
         self.len = links.len();
+        self.select_mode = true;
         self.checked = true;
         self.available = links;
+        self.set_message("ready");
     }
 
     pub fn set_message(&mut self, message: impl ToString) {
         self.message = message.to_string();
     }
+
+    pub fn download_selected(&mut self) -> BlenderVersion {
+        let selected = self.available.get(self.selected).unwrap().clone();
+        self.set_message(format!("downloading {}", selected.link));
+        selected
+    }
 }
 
 impl Widget for &RemoteWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from("remote").alignment(Alignment::Center);
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Fill(1), Constraint::Max(4)])
+            .split(area);
+
+        let block = Block::bordered()
+            .title(" status ")
+            .border_set(border::ROUNDED)
+            .padding(Padding::horizontal(1));
+
+        let text = Text::from(self.message.clone());
+
+        let p = Paragraph::new(text)
+            .wrap(ratatui::widgets::Wrap { trim: false })
+            .left_aligned()
+            .block(block);
+
+        p.render(layout[1], buf);
 
         let mut block = Block::bordered()
-            .title(title)
+            .title(" remote ")
             .border_set(border::ROUNDED)
             .padding(Padding::uniform(1));
 
@@ -119,17 +151,6 @@ impl Widget for &RemoteWidget {
             super::ActiveWidget::RemoteWidget => {
                 block = block.magenta();
             }
-        }
-
-        if self.available.len() == 0 {
-            let text = Text::from(self.message.clone());
-            let p = Paragraph::new(text)
-                .wrap(ratatui::widgets::Wrap { trim: false })
-                .left_aligned()
-                .block(block);
-
-            p.render(area, buf);
-            return;
         }
 
         let lines: Vec<Line> = self
@@ -160,8 +181,9 @@ impl Widget for &RemoteWidget {
                     _ => Span::styled(String::new(), Style::default().fg(Color::Red)),
                 };
 
-                let mut line = Line::from(vec![version_span, release_span]);
+                let branch_span = Span::raw(&version.branch);
 
+                let mut line = Line::from(vec![version_span, release_span, branch_span]);
                 if idx == self.selected {
                     line = line
                         .into_iter()
@@ -180,6 +202,6 @@ impl Widget for &RemoteWidget {
             .left_aligned()
             .block(block);
 
-        p.render(area, buf);
+        p.render(layout[0], buf);
     }
 }

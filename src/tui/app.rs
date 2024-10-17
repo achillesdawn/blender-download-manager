@@ -7,7 +7,7 @@ use std::{
 };
 
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
-use remote::{get_links, RemoteWidget};
+use remote::{get_file, get_links, RemoteWidget};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::BlenderVersion;
@@ -30,8 +30,12 @@ use help::HelpWidget;
 
 use super::utils::Tui;
 
-enum Message {
+pub enum Message {
     GetLinksResult(Vec<BlenderVersion>),
+
+    GetVersionUpdate(String),
+    GetVersionResult,
+
     Error(String),
 }
 
@@ -72,7 +76,7 @@ impl TuiApp {
         }));
 
         let help_widget = help::HelpWidget::new();
-        let file_widget = file_list::FileListWidget::new( state.clone());
+        let file_widget = file_list::FileListWidget::new(state.clone());
         let remote_widget = remote::RemoteWidget::new(state.clone());
 
         TuiApp {
@@ -122,6 +126,13 @@ impl TuiApp {
             Message::Error(err) => {
                 self.remote_widget.set_message(err);
             }
+            Message::GetVersionUpdate(s) => {
+                self.remote_widget.set_message(s);
+            },
+            Message::GetVersionResult => {
+                self.remote_widget.set_message("downloaded");
+            },
+            
         }
     }
 
@@ -161,23 +172,46 @@ impl TuiApp {
                         self.done = true;
                     }
                     KeyCode::Enter => {
-                        self.remote_widget
-                            .set_message("checking available versions...");
+                        let active_widget = &self.state.read().unwrap().active_widget;
+                        match active_widget {
+                            ActiveWidget::FileListWidget => {}
+                            ActiveWidget::RemoteWidget => {
+                                if self.remote_widget.select_mode {
+                                    
+                                    let version = self.remote_widget.download_selected();
+                                    let config = self.state.read().unwrap().config.clone();
+                                    let tx = self.events_tx.clone();
 
-                        let config = self.state.read().unwrap().config.clone();
-                        let tx = self.events_tx.clone();
+                                    tokio::spawn(async move {
+                                        let mut file = get_file(&version, config);
+                                        crate::getter::download(&version.link, &mut file, tx).await;
+                                    });
 
-                        tokio::spawn(async move {
-                            let versions = get_links(config).await;
-                            match versions {
-                                Ok(versions) => {
-                                    tx.send(Message::GetLinksResult(versions)).await.unwrap();
-                                }
-                                Err(err) => {
-                                    tx.send(Message::Error(err.to_string())).await.unwrap();
+                                } else {
+                                    self.remote_widget
+                                        .set_message("checking available versions...");
+
+                                    let config = self.state.read().unwrap().config.clone();
+                                    let tx = self.events_tx.clone();
+
+                                    tokio::spawn(async move {
+                                        let versions = get_links(config).await;
+                                        match versions {
+                                            Ok(versions) => {
+                                                tx.send(Message::GetLinksResult(versions))
+                                                    .await
+                                                    .unwrap();
+                                            }
+                                            Err(err) => {
+                                                tx.send(Message::Error(err.to_string()))
+                                                    .await
+                                                    .unwrap();
+                                            }
+                                        }
+                                    });
                                 }
                             }
-                        });
+                        }
                     }
                     _ => {}
                 };

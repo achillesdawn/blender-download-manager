@@ -1,12 +1,13 @@
-use std::fs::File;
+use std::{fs::File, sync::Arc};
 use std::io::Write;
 
 use reqwest::{header::HeaderName, Request, Url};
 use serde_json::json;
 
 use anyhow::Result;
+use tokio::sync::mpsc::Sender;
 
-use crate::{blender_utils, config::Config, BlenderVersion};
+use crate::{blender_utils, config::Config, tui::Message, BlenderVersion};
 
 // use crate::tracker::ProgressTracker;
 
@@ -66,15 +67,14 @@ pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
     blender_utils::select(body)
 }
 
-pub async fn download(link: &str, file: &mut File) -> Result<usize> {
+pub async fn download(link: &str, file: &mut File, tx: Arc<Sender<Message>>) {
     let getter = Getter::new(link);
 
     let mut r: reqwest::Response = match reqwest::Client::new().execute(getter.request).await {
         Ok(r) => r,
         Err(err) => {
-            println!("Error getting Request");
-            dbg!(err.to_string());
-            return Err(err.into());
+            tx.send(Message::Error(err.to_string())).await.unwrap();
+            return;
         }
     };
 
@@ -82,15 +82,20 @@ pub async fn download(link: &str, file: &mut File) -> Result<usize> {
 
     let len_mb = len as f32 / 1000000.0;
 
-    println!("{} {len_mb:.1}mb ({len} bytes)", "Content Size");
+    let size = format!("{} {len_mb:.1}mb ({len} bytes)", "Content Size");
+
+    tx.send(Message::GetVersionUpdate(size)).await.unwrap();
 
     // let mut tracker = ProgressTracker::new(len);
 
-    while let Some(chunk) = r.chunk().await? {
-        let _ = file.write(&chunk).unwrap();
+    let mut total: usize = 0;
+
+    while let Ok(Some(chunk)) = r.chunk().await {
+        total += file.write(&chunk).unwrap();
     }
 
-    Ok(0)
+    tx.send(Message::GetVersionResult).await.unwrap();
+
 
     // while let Ok(n) = reader.read(&mut buffer) {
     //     if n == 0 {

@@ -109,7 +109,9 @@ impl Widget for &FileListWidget {
                     _ => Span::styled(String::new(), Style::default().fg(Color::Red)),
                 };
 
-                let mut line = Line::from(vec![version_span, release_span]);
+                let branch_span = Span::raw(&version.branch);
+
+                let mut line = Line::from(vec![version_span, release_span, branch_span]);
 
                 if idx == self.selected {
                     line = line
