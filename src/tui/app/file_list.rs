@@ -10,6 +10,8 @@ use ratatui::{
 
 use super::StateRef;
 
+mod utils;
+
 pub struct FileListWidget {
     state: StateRef,
 
@@ -19,14 +21,27 @@ pub struct FileListWidget {
 }
 
 impl FileListWidget {
-    pub fn new(files: Vec<BlenderVersion>, state: StateRef) -> Self {
-        FileListWidget {
+    pub fn new(state: StateRef) -> Self {
+        let mut file_list_widget = FileListWidget {
             state,
 
-            len: files.len(),
-            files: files,
+            len: 0,
+            files: Vec::new(),
             selected: 0,
-        }
+        };
+
+        file_list_widget.refresh_local();
+        file_list_widget
+    }
+
+    fn refresh_local(&mut self) {
+        let config = self.state.read().unwrap().config.clone();
+
+        let file_list = utils::check_downloaded(&config).unwrap();
+        let files = utils::parse_downloaded(file_list);
+
+        self.len = files.len();
+        self.files = files;
     }
 }
 

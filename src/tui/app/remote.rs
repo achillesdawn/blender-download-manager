@@ -1,3 +1,5 @@
+use std::{path::PathBuf, str::FromStr};
+
 use crate::{config::Config, BlenderVersion};
 use ratatui::{
     layout::Alignment,
@@ -43,6 +45,33 @@ pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String> {
     match crate::getter::get_links(&config).await {
         Ok(versions) => Ok(versions),
         Err(err) => Err(err.to_string()),
+    }
+}
+
+pub async fn get_version(version: BlenderVersion, config: Config) {
+    let filename = version.link.split("daily/").nth(1).unwrap();
+
+    let mut path = PathBuf::from_str(&config.path).unwrap();
+    path.push(filename);
+
+    // if downloaded.contains(&path.with_extension("").with_extension("")) {
+    //     println!("{} Already at Latest version", version.version);
+    // }
+
+    if path.exists() {
+        println!("{} Already downloaded", version.version);
+    }
+
+    let mut file = std::fs::File::create(&path).unwrap();
+
+    let download_result = crate::getter::download(&version.link, &mut file).await;
+
+    if download_result.is_err() {
+        println!("Download Error: {}", download_result.err().unwrap());
+    } else {
+        drop(file);
+
+        crate::extract_and_clean(path, &config);
     }
 }
 

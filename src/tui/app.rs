@@ -41,6 +41,7 @@ enum ActiveWidget {
 }
 
 pub struct State {
+    config: Config,
     active_widget: ActiveWidget,
 }
 
@@ -50,8 +51,6 @@ pub struct TuiApp {
     done: bool,
 
     state: StateRef,
-
-    config: Config,
 
     events_tx: Arc<Sender<Message>>,
     events: Receiver<Message>,
@@ -64,21 +63,21 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
-    pub fn new(config: Config, downloaded: Vec<BlenderVersion>) -> Self {
+    pub fn new(config: Config) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel::<Message>(1);
 
         let state = Rc::new(RwLock::new(State {
+            config,
             active_widget: ActiveWidget::FileListWidget,
         }));
 
         let help_widget = help::HelpWidget::new();
-        let file_widget = file_list::FileListWidget::new(downloaded, state.clone());
+        let file_widget = file_list::FileListWidget::new( state.clone());
         let remote_widget = remote::RemoteWidget::new(state.clone());
 
         TuiApp {
             done: false,
             text: String::from_str("loading...").unwrap(),
-            config,
 
             events_tx: Arc::new(tx),
             events: rx,
@@ -165,7 +164,7 @@ impl TuiApp {
                         self.remote_widget
                             .set_message("checking available versions...");
 
-                        let config = self.config.clone();
+                        let config = self.state.read().unwrap().config.clone();
                         let tx = self.events_tx.clone();
 
                         tokio::spawn(async move {
