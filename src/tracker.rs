@@ -95,7 +95,7 @@ impl ProgressTracker {
 
     fn display(&self, kbs: f32) -> String {
         let s = format!(
-            "\r{} | {} | {} | estimated {}",
+            "{} | {} | {} | estimated {}",
             self.progress_bar(),
             ProgressTracker::kbs_to_human_readable(kbs),
             self.elapsed_to_human_readable(),
