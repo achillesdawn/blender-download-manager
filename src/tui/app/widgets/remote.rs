@@ -50,7 +50,7 @@ pub async fn get_links(config: Config) -> Result<Vec<BlenderVersion>, String> {
     }
 }
 
-pub fn get_file(version: &BlenderVersion, config: Config) -> File{
+pub fn get_file(version: &BlenderVersion, config: Config) -> (File, PathBuf){
     let filename = version.link.split("daily/").nth(1).unwrap();
 
     let mut path = PathBuf::from_str(&config.path).unwrap();
@@ -65,18 +65,29 @@ pub fn get_file(version: &BlenderVersion, config: Config) -> File{
     }
 
     let file = std::fs::File::create(&path).unwrap();
-    file
-
-    // let download_result = crate::getter::download(&version.link, &mut file).await;
-
-    // if download_result.is_err() {
-    //     println!("Download Error: {}", download_result.err().unwrap());
-    // } else {
-    //     drop(file);
-
-    //     crate::extract_and_clean(path, &config);
-    // }
+    (file, path)
 }
+
+pub fn extract_and_clean(path: PathBuf, config: &Config) {
+
+
+    let mut child = std::process::Command::new("tar")
+        .arg("-xf")
+        .arg(&path)
+        .arg(format!("--directory={}", config.path))
+        .spawn()
+        .unwrap();
+
+    let result = child.wait().unwrap();
+
+    if result.success() {
+        println!("{}", "Cleaning up...");
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    println!("Downloaded {:?}", path);
+}
+
 
 impl RemoteWidget {
     pub fn increment_active_selection(&mut self) {

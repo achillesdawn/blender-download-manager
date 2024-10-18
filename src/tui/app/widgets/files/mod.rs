@@ -1,4 +1,4 @@
-use crate::BlenderVersion;
+use crate::LocalBlenderVersion;
 use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect, Stylize},
@@ -15,7 +15,7 @@ mod utils;
 pub struct FileListWidget {
     state: StateRef,
 
-    files: Vec<BlenderVersion>,
+    files: Vec<LocalBlenderVersion>,
     selected: usize,
     len: usize,
 }
@@ -85,33 +85,36 @@ impl Widget for &FileListWidget {
             .files
             .iter()
             .enumerate()
-            .map(|(idx, version)| {
-                let version_span = match &version.version {
+            .map(|(idx, local)| {
+                let version_span = match &local.blender_version.version {
                     x if x.contains("4.2") => {
-                        Span::styled(format!("{x:^10}"), Style::default().bg(Color::Green))
+                        Span::styled(format!("{x}"), Style::default().bg(Color::Green))
                     }
                     x if x.contains("4.3") => {
-                        Span::styled(format!("{x:^10}"), Style::default().bg(Color::Magenta))
+                        Span::styled(format!("{x}"), Style::default().bg(Color::Magenta))
                     }
-                    x => Span::styled(format!("{x:^10}"), Style::default().bg(Color::Gray)),
+                    x => Span::styled(format!("{x}"), Style::default().bg(Color::Gray)),
                 };
 
-                let release_span = match version.release.as_str() {
+                let release_span = match local.blender_version.release.as_str() {
                     x if x == "stable" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Green))
+                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Green))
                     }
                     x if x == "beta" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Magenta))
+                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Magenta))
                     }
                     x if x == "alpha" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Gray))
+                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Gray))
                     }
                     _ => Span::styled(String::new(), Style::default().fg(Color::Red)),
                 };
 
-                let branch_span = Span::raw(&version.branch);
+                let branch_span = Span::raw(&local.blender_version.branch);
 
-                let mut line = Line::from(vec![version_span, release_span, branch_span]);
+                let created_span = Span::raw(format!(" {} ", &local.created));
+
+                let mut line =
+                    Line::from(vec![version_span, release_span, branch_span, created_span]);
 
                 if idx == self.selected {
                     line = line

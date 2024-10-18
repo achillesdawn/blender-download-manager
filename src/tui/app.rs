@@ -26,7 +26,7 @@ mod widgets;
 use widgets::{
     files::FileListWidget,
     help::HelpWidget,
-    remote::{get_file, get_links, RemoteWidget},
+    remote::{extract_and_clean, get_file, get_links, RemoteWidget},
 };
 
 mod state;
@@ -107,9 +107,24 @@ impl TuiApp {
             Message::GetVersionUpdate(s) => {
                 self.remote_widget.set_message(s);
             }
-            Message::GetVersionResult => {
-                self.remote_widget.set_message("downloaded");
+            Message::GetVersionResult(path) => {
+                self.remote_widget.set_message("downloaded...extracting...");
+
+                let config = self.state.read().unwrap().config.clone();
+                let handle = tokio::task::spawn_blocking(move || {
+                    extract_and_clean(path, &config);
+                });
+
+                let tx = self.events_tx.clone();
+                tokio::spawn(async move {
+                    handle.await.unwrap();
+                    tx.send(Message::ExtractResult).await.unwrap();
+                });
+            }
+
+            Message::ExtractResult => {
                 self.file_widget.refresh_local();
+                self.remote_widget.set_message("ready");
             }
         }
     }
@@ -160,10 +175,11 @@ impl TuiApp {
                                     let tx = self.events_tx.clone();
 
                                     tokio::spawn(async move {
-                                        let mut file = get_file(&version, config);
+                                        let (mut file, path) = get_file(&version, config);
                                         crate::getter::download_with_tx(
                                             &version.link,
                                             &mut file,
+                                            path,
                                             tx,
                                         )
                                         .await;
@@ -219,7 +235,7 @@ impl Widget for &TuiApp {
 
         let split_layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(30), Constraint::default()])
+            .constraints([Constraint::Percentage(40), Constraint::default()])
             .split(main_layout[0]);
 
         self.file_widget.render(split_layout[0], buf);

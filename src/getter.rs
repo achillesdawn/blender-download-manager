@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 
 use reqwest::{header::HeaderName, Request, Url};
 use serde_json::json;
@@ -66,7 +67,7 @@ pub async fn get_links(config: &Config) -> Result<Vec<BlenderVersion>, String> {
     blender_utils::select(body)
 }
 
-pub async fn download_with_tx(link: &str, file: &mut File, tx: TxMessage) {
+pub async fn download_with_tx(link: &str, file: &mut File, path: PathBuf, tx: TxMessage) {
     let getter = Getter::new(link);
 
     let mut r: reqwest::Response = match reqwest::Client::new().execute(getter.request).await {
@@ -95,5 +96,5 @@ pub async fn download_with_tx(link: &str, file: &mut File, tx: TxMessage) {
         }
     }
 
-    tx.send(Message::GetVersionResult).await.unwrap();
+    tx.send(Message::GetVersionResult(path)).await.unwrap();
 }

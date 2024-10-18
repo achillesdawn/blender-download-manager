@@ -1,5 +1,4 @@
 use downloader::config::parse_config;
-
 use downloader::tui::TuiApp;
 
 async fn main_async() {
