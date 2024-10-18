@@ -86,7 +86,7 @@ fn filter_latest(versions: Vec<BlenderVersion>) -> Vec<BlenderVersion> {
     result
 }
 
-pub fn select(body: String) -> anyhow::Result<Vec<BlenderVersion>> {
+pub fn select(body: String) -> Result<Vec<BlenderVersion>, String> {
     let document = Html::parse_document(&body);
 
     let selector =

@@ -1,10 +1,8 @@
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 
 use reqwest::{header::HeaderName, Request, Url};
 use serde_json::json;
-
-
 
 use crate::tracker::ProgressTracker;
 use crate::tui::TxMessage;
@@ -52,7 +50,7 @@ impl Getter {
     }
 }
 
-pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
+pub async fn get_links(config: &Config) -> Result<Vec<BlenderVersion>, String> {
     let getter = Getter::new(&config.link);
 
     let r = match reqwest::Client::new().execute(getter.request).await {
@@ -60,7 +58,7 @@ pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
         Err(err) => {
             println!("Error getting Request");
             dbg!(err.to_string());
-            return Err(err.into());
+            return Err(err.to_string());
         }
     };
 

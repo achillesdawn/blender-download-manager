@@ -2,12 +2,12 @@ use std::path::PathBuf;
 
 use crate::{config::Config, BlenderVersion};
 
-pub(super) fn check_downloaded(config: &Config) -> anyhow::Result<Vec<PathBuf>> {
+pub(super) fn check_downloaded(config: &Config) -> Result<Vec<PathBuf>, String> {
     let path = PathBuf::from(config.path.clone());
 
     let mut result = Vec::with_capacity(10);
 
-    for dir in std::fs::read_dir(path)? {
+    for dir in std::fs::read_dir(path).unwrap() {
         let dir = match dir {
             Ok(d) => d,
             Err(err) => {

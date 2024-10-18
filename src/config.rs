@@ -11,18 +11,18 @@ pub struct Config {
     pub link: String,
 }
 
-pub fn parse_config() -> anyhow::Result<Config> {
-    let path = PathBuf::from_str("config.toml")?;
+pub fn parse_config() -> Result<Config, String> {
+    let path = PathBuf::from_str("config.toml").map_err(|err|err.to_string())?;
     if !path.exists() {
         println!("config.toml not found");
         return Ok(Config::default());
     }
 
-    let mut file = std::fs::File::open(path)?;
+    let mut file = std::fs::File::open(path).map_err(|err|err.to_string())?;
     let mut buf = Vec::with_capacity(100_000);
     let _ = file.read_to_end(&mut buf).expect("could not read file");
 
-    let contents = String::from_utf8(buf)?;
+    let contents = String::from_utf8(buf).map_err(|err| err.to_string())?;
 
     let mut config: Config = toml::from_str(&contents).unwrap();
 
