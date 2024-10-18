@@ -4,6 +4,7 @@ use config::Config;
 pub mod blender_utils;
 pub mod config;
 mod getter;
+mod tracker;
 // mod tracker;
 pub mod tui;
 

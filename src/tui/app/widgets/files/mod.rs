@@ -34,7 +34,7 @@ impl FileListWidget {
         file_list_widget
     }
 
-    fn refresh_local(&mut self) {
+    pub fn refresh_local(&mut self) {
         let config = self.state.read().unwrap().config.clone();
 
         let file_list = utils::check_downloaded(&config).unwrap();

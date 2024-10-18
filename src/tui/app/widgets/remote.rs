@@ -2,12 +2,12 @@ use std::{fs::File, path::PathBuf, str::FromStr};
 
 use crate::{config::Config, BlenderVersion};
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout},
     prelude::{Buffer, Rect, Stylize},
     style::{Color, Style},
     symbols::border,
     text::{Line, Span, Text},
-    widgets::{block::Title, Block, Padding, Paragraph, Widget},
+    widgets::{Block, Padding, Paragraph, Widget},
 };
 
 use super::StateRef;

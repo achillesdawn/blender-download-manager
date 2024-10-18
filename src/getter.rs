@@ -1,12 +1,13 @@
-use std::{fs::File, sync::Arc};
 use std::io::Write;
+use std::fs::File;
 
 use reqwest::{header::HeaderName, Request, Url};
 use serde_json::json;
 
-use anyhow::Result;
-use tokio::sync::mpsc::Sender;
 
+
+use crate::tracker::ProgressTracker;
+use crate::tui::TxMessage;
 use crate::{blender_utils, config::Config, tui::Message, BlenderVersion};
 
 // use crate::tracker::ProgressTracker;
@@ -67,7 +68,7 @@ pub async fn get_links(config: &Config) -> anyhow::Result<Vec<BlenderVersion>> {
     blender_utils::select(body)
 }
 
-pub async fn download(link: &str, file: &mut File, tx: Arc<Sender<Message>>) {
+pub async fn download_with_tx(link: &str, file: &mut File, tx: TxMessage) {
     let getter = Getter::new(link);
 
     let mut r: reqwest::Response = match reqwest::Client::new().execute(getter.request).await {
@@ -86,47 +87,15 @@ pub async fn download(link: &str, file: &mut File, tx: Arc<Sender<Message>>) {
 
     tx.send(Message::GetVersionUpdate(size)).await.unwrap();
 
-    // let mut tracker = ProgressTracker::new(len);
+    let mut tracker = ProgressTracker::new(len);
 
-    let mut total: usize = 0;
-
+    let mut n: usize;
     while let Ok(Some(chunk)) = r.chunk().await {
-        total += file.write(&chunk).unwrap();
+        n = file.write(&chunk).unwrap();
+        if let Some(s) = tracker.update(n) {
+            tx.send(Message::GetVersionUpdate(s)).await.unwrap();
+        }
     }
 
     tx.send(Message::GetVersionResult).await.unwrap();
-
-
-    // while let Ok(n) = reader.read(&mut buffer) {
-    //     if n == 0 {
-    //         tracker.flush();
-
-    //         if tracker.total_read == len {
-    //             println!(
-    //                 "| {}. Downloaded {len_mb:.1}mb ({} bytes)",
-    //                 "Download Finished".green(),
-    //                 tracker.total_read
-    //             );
-    //             std::io::stdout().flush().unwrap();
-    //         } else {
-    //             println!(
-    //                 "{}: {}/{len}",
-    //                 "Break before finishing".red(),
-    //                 tracker.total_read
-    //             );
-    //             std::io::stdout().flush().unwrap();
-    //         }
-    //         break;
-    //     }
-
-    //     file.write(&buffer[..n]).unwrap();
-
-    //     tracker.update(n);
-    // }
-
-    // if tracker.total_read != len {
-    //     return Err(anyhow::anyhow!("Incomplete"));
-    // }
-
-    // Ok(tracker.total_read)
 }

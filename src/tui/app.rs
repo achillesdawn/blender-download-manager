@@ -1,16 +1,14 @@
 use std::{
     io::{self},
     rc::Rc,
-    str::FromStr,
     sync::{Arc, RwLock},
     time::Duration,
 };
 
 use crossterm::event::{Event, EventStream, KeyCode, KeyEventKind};
-use remote::{get_file, get_links, RemoteWidget};
-use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::BlenderVersion;
+use tokio::sync::mpsc::Receiver;
+
 use futures::StreamExt;
 
 use ratatui::{
@@ -21,49 +19,30 @@ use ratatui::{
 
 use crate::config::Config;
 
-mod file_list;
-mod help;
-mod remote;
+use super::{utils::Tui, Message, TxMessage};
 
-use file_list::FileListWidget;
-use help::HelpWidget;
+mod widgets;
 
-use super::utils::Tui;
+use widgets::{
+    files::FileListWidget,
+    help::HelpWidget,
+    remote::{get_file, get_links, RemoteWidget},
+};
 
-pub enum Message {
-    GetLinksResult(Vec<BlenderVersion>),
-
-    GetVersionUpdate(String),
-    GetVersionResult,
-
-    Error(String),
-}
-
-enum ActiveWidget {
-    FileListWidget,
-    RemoteWidget,
-}
-
-pub struct State {
-    config: Config,
-    active_widget: ActiveWidget,
-}
-
-type StateRef = Rc<RwLock<State>>;
+mod state;
+use state::{ActiveWidget, State, StateRef};
 
 pub struct TuiApp {
     done: bool,
 
     state: StateRef,
 
-    events_tx: Arc<Sender<Message>>,
+    events_tx: TxMessage,
     events: Receiver<Message>,
 
     file_widget: FileListWidget,
     help_widget: HelpWidget,
     remote_widget: RemoteWidget,
-
-    text: String,
 }
 
 impl TuiApp {
@@ -75,13 +54,12 @@ impl TuiApp {
             active_widget: ActiveWidget::FileListWidget,
         }));
 
-        let help_widget = help::HelpWidget::new();
-        let file_widget = file_list::FileListWidget::new(state.clone());
-        let remote_widget = remote::RemoteWidget::new(state.clone());
+        let help_widget = HelpWidget::new();
+        let file_widget = FileListWidget::new(state.clone());
+        let remote_widget = RemoteWidget::new(state.clone());
 
         TuiApp {
             done: false,
-            text: String::from_str("loading...").unwrap(),
 
             events_tx: Arc::new(tx),
             events: rx,
@@ -128,11 +106,11 @@ impl TuiApp {
             }
             Message::GetVersionUpdate(s) => {
                 self.remote_widget.set_message(s);
-            },
+            }
             Message::GetVersionResult => {
                 self.remote_widget.set_message("downloaded");
-            },
-            
+                self.file_widget.refresh_local();
+            }
         }
     }
 
@@ -177,16 +155,19 @@ impl TuiApp {
                             ActiveWidget::FileListWidget => {}
                             ActiveWidget::RemoteWidget => {
                                 if self.remote_widget.select_mode {
-                                    
                                     let version = self.remote_widget.download_selected();
                                     let config = self.state.read().unwrap().config.clone();
                                     let tx = self.events_tx.clone();
 
                                     tokio::spawn(async move {
                                         let mut file = get_file(&version, config);
-                                        crate::getter::download(&version.link, &mut file, tx).await;
+                                        crate::getter::download_with_tx(
+                                            &version.link,
+                                            &mut file,
+                                            tx,
+                                        )
+                                        .await;
                                     });
-
                                 } else {
                                     self.remote_widget
                                         .set_message("checking available versions...");
