@@ -84,7 +84,7 @@ pub async fn download_with_tx(link: &str, file: &mut File, path: PathBuf, tx: Tx
 
     let size = format!("{} {len_mb:.1}mb ({len} bytes)", "Content Size");
 
-    tx.send(Message::GetVersionUpdate(size)).await.unwrap();
+    tx.send(Message::VersionUpdate(size)).await.unwrap();
 
     let mut tracker = ProgressTracker::new(len);
 
@@ -92,9 +92,9 @@ pub async fn download_with_tx(link: &str, file: &mut File, path: PathBuf, tx: Tx
     while let Ok(Some(chunk)) = r.chunk().await {
         n = file.write(&chunk).unwrap();
         if let Some(s) = tracker.update(n) {
-            tx.send(Message::GetVersionUpdate(s)).await.unwrap();
+            tx.send(Message::VersionUpdate(s)).await.unwrap();
         }
     }
 
-    tx.send(Message::GetVersionResult(path)).await.unwrap();
+    tx.send(Message::VersionResult(path)).await.unwrap();
 }

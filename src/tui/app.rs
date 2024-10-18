@@ -98,16 +98,16 @@ impl TuiApp {
 
     fn handle_messages(&mut self, message: Message) {
         match message {
-            Message::GetLinksResult(links) => {
+            Message::Links(links) => {
                 self.remote_widget.set_available(links);
             }
             Message::Error(err) => {
                 self.remote_widget.set_message(err);
             }
-            Message::GetVersionUpdate(s) => {
+            Message::VersionUpdate(s) => {
                 self.remote_widget.set_message(s);
             }
-            Message::GetVersionResult(path) => {
+            Message::VersionResult(path) => {
                 self.remote_widget.set_message("downloaded...extracting...");
 
                 let config = self.state.read().unwrap().config.clone();
@@ -195,7 +195,7 @@ impl TuiApp {
                                         let versions = get_links(config).await;
                                         match versions {
                                             Ok(versions) => {
-                                                tx.send(Message::GetLinksResult(versions))
+                                                tx.send(Message::Links(versions))
                                                     .await
                                                     .unwrap();
                                             }
