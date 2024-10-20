@@ -1,9 +1,4 @@
-use std::{
-    io::{self, Write},
-    time::Instant,
-};
-
-use colored::{ColoredString, Colorize};
+use std::time::Instant;
 
 pub struct ProgressTracker {
     content_length: usize,
@@ -28,7 +23,7 @@ impl ProgressTracker {
         }
     }
 
-    pub fn update(&mut self, read: usize) {
+    pub fn update(&mut self, read: usize) -> Option<String> {
         self.total_read += read;
         self.percentage = self.total_read as f32 / self.content_length as f32 * 100.0;
 
@@ -39,11 +34,14 @@ impl ProgressTracker {
         if incremental_time > 1.0 {
             let kbs = self.incremental_read as f32 / incremental_time / 1000.0;
 
-            self.display(kbs);
+            let s = self.display(kbs);
 
             self.timer = Instant::now();
             self.incremental_read = 0;
+
+            return Some(s);
         }
+        None
     }
 
     fn estimated(&self) -> String {
@@ -59,10 +57,10 @@ impl ProgressTracker {
 
     fn kbs_to_human_readable(kbs: f32) -> String {
         if kbs > 1000.0 {
-            let kbs_string = format!("{:>5.1}", kbs / 1000.0).blue();
+            let kbs_string = format!("{:>5.1}", kbs / 1000.0);
             format!("{} mb/s", kbs_string)
         } else {
-            let kbs_string = format!("{:>5.1}", kbs).blue();
+            let kbs_string = format!("{:>5.1}", kbs);
             format!("{} kb/s", kbs_string)
         }
     }
@@ -78,7 +76,7 @@ impl ProgressTracker {
         }
     }
 
-    fn progress_bar(&self) -> ColoredString {
+    fn progress_bar(&self) -> String {
         let bar_length = 15.0;
 
         let current_index = ((self.percentage / 100.0) * bar_length).floor() as usize;
@@ -92,27 +90,22 @@ impl ProgressTracker {
             }
         }
 
-        format!(
-            "{:>5.1}%  [{}] {}",
-            self.percentage,
-            bar.green(),
-            current_index
-        )
-        .bold()
+        format!("{:>5.1}%  [{}] {}", self.percentage, bar, current_index)
     }
 
-    fn display(&self, kbs: f32) {
-        print!(
-            "\r{} | {} | {} | estimated {}",
+    fn display(&self, kbs: f32) -> String {
+        let s = format!(
+            "{} | {} | {} | estimated {}",
             self.progress_bar(),
             ProgressTracker::kbs_to_human_readable(kbs),
             self.elapsed_to_human_readable(),
             self.estimated()
         );
 
-        io::stdout().flush().unwrap();
+        s
     }
 
+    #[allow(unused)]
     pub fn flush(&self) {
         let incremental_time = self.timer.elapsed().as_secs_f32();
         let kbs = self.incremental_read as f32 / incremental_time / 1000.0;
