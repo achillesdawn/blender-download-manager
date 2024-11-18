@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{block::Title, Block, Padding, Paragraph, Widget},
 };
 
-use super::StateRef;
+use super::{release_span, StateRef};
 
 mod utils;
 
@@ -96,18 +96,7 @@ impl Widget for &FileListWidget {
                     x => Span::styled(format!("{x}"), Style::default().bg(Color::Gray)),
                 };
 
-                let release_span = match local.blender_version.release.as_str() {
-                    x if x == "stable" => {
-                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Green))
-                    }
-                    x if x == "beta" => {
-                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Magenta))
-                    }
-                    x if x == "alpha" => {
-                        Span::styled(format!("{x:^8}"), Style::default().fg(Color::Gray))
-                    }
-                    _ => Span::styled(String::new(), Style::default().fg(Color::Red)),
-                };
+                let release_span = release_span(&local.blender_version);
 
                 let branch_span = Span::raw(&local.blender_version.branch);
 

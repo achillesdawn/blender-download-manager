@@ -178,7 +178,7 @@ impl TuiApp {
                                     let versions = get_links(config).await;
                                     match versions {
                                         Ok(versions) => {
-                                            tx.send(Message::GetLinksResult(versions))
+                                            tx.send(Message::Links(versions))
                                                 .await
                                                 .unwrap();
                                         }

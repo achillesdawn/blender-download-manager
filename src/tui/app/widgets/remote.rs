@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, Padding, Paragraph, Widget},
 };
 
-use super::StateRef;
+use super::{release_span, StateRef};
 
 pub struct RemoteWidget {
     state: StateRef,
@@ -173,18 +173,7 @@ impl Widget for &RemoteWidget {
                     x => Span::styled(format!("{x:^10}"), Style::default().bg(Color::Gray)),
                 };
 
-                let release_span = match version.release.as_str() {
-                    x if x == "stable" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Green))
-                    }
-                    x if x == "beta" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Magenta))
-                    }
-                    x if x == "alpha" => {
-                        Span::styled(format!("{x:^10}"), Style::default().fg(Color::Gray))
-                    }
-                    _ => Span::styled(String::new(), Style::default().fg(Color::Red)),
-                };
+                let release_span = release_span(version);
 
                 let branch_span = Span::raw(&version.branch);
 
