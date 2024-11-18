@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{block::Title, Block, Padding, Paragraph, Widget},
 };
 
-use super::{release_span, StateRef};
+use super::{release_span, utils::version_span, StateRef};
 
 mod utils;
 
@@ -86,15 +86,7 @@ impl Widget for &FileListWidget {
             .iter()
             .enumerate()
             .map(|(idx, local)| {
-                let version_span = match &local.blender_version.version {
-                    x if x.contains("4.2") => {
-                        Span::styled(format!("{x}"), Style::default().bg(Color::Green))
-                    }
-                    x if x.contains("4.3") => {
-                        Span::styled(format!("{x}"), Style::default().bg(Color::Magenta))
-                    }
-                    x => Span::styled(format!("{x}"), Style::default().bg(Color::Gray)),
-                };
+                let version_span = version_span(&local.blender_version);
 
                 let release_span = release_span(&local.blender_version);
 

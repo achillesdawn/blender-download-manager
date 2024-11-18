@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, Padding, Paragraph, Widget},
 };
 
-use super::{release_span, StateRef};
+use super::{release_span, utils::version_span, StateRef};
 
 pub struct RemoteWidget {
     state: StateRef,
@@ -163,15 +163,7 @@ impl Widget for &RemoteWidget {
             .iter()
             .enumerate()
             .map(|(idx, version)| {
-                let version_span = match &version.version {
-                    x if x.contains("4.2") => {
-                        Span::styled(format!("{x:^10}"), Style::default().bg(Color::Green))
-                    }
-                    x if x.contains("4.3") => {
-                        Span::styled(format!("{x:^10}"), Style::default().bg(Color::Magenta))
-                    }
-                    x => Span::styled(format!("{x:^10}"), Style::default().bg(Color::Gray)),
-                };
+                let version_span = version_span(version);
 
                 let release_span = release_span(version);
 
