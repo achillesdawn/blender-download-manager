@@ -167,7 +167,27 @@ impl TuiApp {
                     KeyCode::Enter => {
                         let active_widget = &self.state.read().unwrap().active_widget;
                         match active_widget {
-                            ActiveWidget::FileListWidget => {}
+                            ActiveWidget::FileListWidget => {
+                                self.remote_widget
+                                    .set_message("checking available versions...");
+
+                                let config = self.state.read().unwrap().config.clone();
+                                let tx = self.events_tx.clone();
+
+                                tokio::spawn(async move {
+                                    let versions = get_links(config).await;
+                                    match versions {
+                                        Ok(versions) => {
+                                            tx.send(Message::GetLinksResult(versions))
+                                                .await
+                                                .unwrap();
+                                        }
+                                        Err(err) => {
+                                            tx.send(Message::Error(err.to_string())).await.unwrap();
+                                        }
+                                    }
+                                });
+                            }
                             ActiveWidget::RemoteWidget => {
                                 if self.remote_widget.select_mode {
                                     let version = self.remote_widget.download_selected();
